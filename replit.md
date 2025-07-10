@@ -8,6 +8,15 @@ The XML Question Editor is a professional web application designed for education
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+### July 10, 2025
+- Successfully resolved XML upload functionality - file selection and upload working correctly
+- Added delete button for removing bad questions with confirmation dialog
+- Removed separate "Correct Answer" field from question editor interface
+- Updated choices section to highlight correct answer in green with check mark icon
+- Correct choice now shows green background, green border, and green text
+
 ## System Architecture
 
 ### Frontend Architecture

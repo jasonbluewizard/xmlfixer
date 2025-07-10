@@ -27,7 +27,6 @@ const questionSchema = z.object({
   standard: z.string().min(1),
   tier: z.number().min(1).max(3),
   questionText: z.string().min(1),
-  correctAnswer: z.string().min(1),
   answerKey: z.enum(ANSWER_KEYS),
   choices: z.array(z.string().min(1)).min(2).max(4),
   explanation: z.string().min(1),
@@ -68,7 +67,6 @@ export default function QuestionEditor({
       standard: "",
       tier: 1,
       questionText: "",
-      correctAnswer: "",
       answerKey: "A",
       choices: ["", "", "", ""],
       explanation: "",
@@ -88,7 +86,6 @@ export default function QuestionEditor({
       standard: formData.standard,
       tier: formData.tier,
       questionText: formData.questionText,
-      correctAnswer: formData.correctAnswer,
       answerKey: formData.answerKey,
       choices: formData.choices.filter(Boolean),
       explanation: formData.explanation,
@@ -107,7 +104,6 @@ export default function QuestionEditor({
         standard: question.standard,
         tier: question.tier,
         questionText: question.questionText,
-        correctAnswer: question.correctAnswer,
         answerKey: question.answerKey as any,
         choices: [...question.choices, ...Array(4 - question.choices.length).fill("")],
         explanation: question.explanation,
@@ -175,7 +171,6 @@ export default function QuestionEditor({
         standard: question.standard,
         tier: question.tier,
         questionText: question.questionText,
-        correctAnswer: question.correctAnswer,
         answerKey: question.answerKey as any,
         choices: [...question.choices, ...Array(4 - question.choices.length).fill("")],
         explanation: question.explanation,
@@ -477,16 +472,24 @@ export default function QuestionEditor({
                                 key={key}
                                 className={cn(
                                   "flex items-center space-x-3 p-3 border rounded-md",
-                                  formData.choices[index] === formData.choices.find((c, i) => i !== index && c === formData.choices[index])
+                                  field.value === key
+                                    ? "border-green-500 bg-green-50"
+                                    : formData.choices[index] === formData.choices.find((c, i) => i !== index && c === formData.choices[index])
                                     ? "border-warning bg-warning/10"
                                     : "border-slate-300"
                                 )}
                               >
                                 <div className="flex items-center space-x-2">
                                   <RadioGroupItem value={key} id={key} />
-                                  <Label htmlFor={key} className="font-medium">
+                                  <Label htmlFor={key} className={cn(
+                                    "font-medium",
+                                    field.value === key ? "text-green-700" : ""
+                                  )}>
                                     {key}
                                   </Label>
+                                  {field.value === key && (
+                                    <CheckCircle className="h-4 w-4 text-green-600" />
+                                  )}
                                 </div>
                                 <FormField
                                   control={form.control}
@@ -512,25 +515,6 @@ export default function QuestionEditor({
                   />
                 </div>
               </div>
-              
-              {/* Correct answer */}
-              <FormField
-                control={form.control}
-                name="correctAnswer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-semibold">Correct Answer</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        rows={2}
-                        className="resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
               
               {/* Explanation */}
               <FormField
