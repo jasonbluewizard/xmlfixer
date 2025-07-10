@@ -32,29 +32,38 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     const xmlFile = files.find(f => f.name.endsWith('.xml'));
     
     if (xmlFile) {
+      console.log('File dropped:', xmlFile.name, 'Size:', xmlFile.size);
       setFile(xmlFile);
+    } else {
+      console.log('No XML file found in dropped files:', files.map(f => f.name));
     }
   }, []);
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files[0]) {
+      console.log('File selected:', files[0].name, 'Size:', files[0].size);
       setFile(files[0]);
     }
   }, []);
 
   const handleUpload = useCallback(() => {
-    if (!file) return;
+    if (!file) {
+      console.log('No file selected for upload');
+      return;
+    }
     
-    console.log('Starting upload for file:', file.name);
+    console.log('Starting upload for file:', file.name, 'Size:', file.size, 'Type:', file.type);
+    console.log('uploadXml mutation state:', { isPending: uploadXml.isPending, isError: uploadXml.isError });
+    
     uploadXml.mutate(file, {
-      onSuccess: () => {
-        console.log('Upload completed successfully');
+      onSuccess: (data) => {
+        console.log('Upload completed successfully, data:', data);
         setFile(null);
         onUploadComplete?.();
       },
       onError: (error) => {
-        console.error('Upload failed:', error);
+        console.error('Upload failed with error:', error);
       },
     });
   }, [file, uploadXml, onUploadComplete]);
@@ -87,7 +96,10 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => document.getElementById("file-input")?.click()}
+            onClick={() => {
+              console.log('Upload area clicked');
+              document.getElementById("file-input")?.click();
+            }}
           >
             <input
               id="file-input"
