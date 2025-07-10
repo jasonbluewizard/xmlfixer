@@ -1,0 +1,107 @@
+Build a professional XML Question Editor web application for educational content reviewers to manually validate, edit, and manage XML math questions for educational games. The system should handle XML files from a math question generation system with the following structure:
+
+XML Format Specifications
+<questions>
+  <question id="G6_SP_6_SP_B_5_1752180484027">
+    <grade>6</grade>
+    <domain>SP</domain>
+    <standard>6.SP.B.5</standard>
+    <tier>1</tier>
+    <questionText><![CDATA[Question content here...]]></questionText>
+    <correctAnswer><![CDATA[Answer text]]></correctAnswer>
+    <answerKey>A</answerKey>
+    <choices>
+      <choice>Option 1</choice>
+      <choice>Option 2</choice>
+      <choice>Option 3</choice>
+      <choice>Option 4</choice>
+    </choices>
+    <explanation><![CDATA[Mathematical explanation...]]></explanation>
+    <theme>potion-making</theme>
+    <tokensUsed>0</tokensUsed>
+    <status>completed</status>
+  </question>
+</questions>
+Core Features Required
+1. XML File Management
+
+Drag-and-drop XML file upload with instant parsing
+File validation with clear error reporting for malformed XML
+Export edited XML with preserving original structure
+Batch export by grade level (1-6) or domain (OA, NBT, NF, MD, G, SP)
+Auto-save functionality to prevent data loss
+2. Question Navigation & Display
+
+Table view with sortable columns (Grade, Domain, Standard, Theme, Status)
+Rapid keyboard navigation (arrow keys, Enter to edit, Esc to cancel)
+Search and filter by: grade level, Common Core standard, domain, theme, keywords
+Question counter showing current position (e.g., "Question 45 of 500")
+"Jump to Question" input field for direct navigation
+3. Question Editor Interface
+
+Split-screen layout: question list (left) + editor (right)
+In-place editing with rich text support for mathematical expressions
+Real-time preview of how question appears to students
+Choice reordering with drag-and-drop
+Answer key selector (A/B/C/D) with visual highlighting
+Validation indicators (green checkmarks, red warning icons)
+4. Metadata Management
+
+Toggle switches to show/hide: Common Core standards, explanations, token usage, themes
+Collapsible sections for metadata (grade, domain, tier, status)
+Bulk edit operations for themes, grades, or status across multiple questions
+Tag system for marking questions that need review or have specific issues
+5. Built-in Error Detection
+
+Mathematical accuracy checker (detect "3 + 2 = 6" errors)
+Answer-explanation consistency validator
+Duplicate choice detector
+Grade-appropriate number range validation (Grade 1 ≤ 20, Grade 2 ≤ 100, etc.)
+Theme consistency checker (prevent generic terms in fantasy themes)
+6. AI Integration (Optional)
+
+Connect to OpenAI API for explanation rewriting
+Auto-fix suggestions for detected errors
+Batch explanation simplification for grade level appropriateness
+Alternative choice generation for questions with issues
+Technical Requirements
+Frontend Stack:
+
+React with TypeScript for type safety
+Shadcn/UI components for professional appearance
+TailwindCSS for responsive design
+React Query for server state management
+Wouter for client-side routing
+Data Handling:
+
+XML parsing with proper CDATA handling
+Local storage for auto-save functionality
+File download with proper MIME types
+Batch operations with progress indicators
+User Experience:
+
+Keyboard shortcuts for power users
+Responsive design for tablets/desktop
+Loading states and progress bars
+Undo/redo functionality for edits
+Confirmation dialogs for destructive actions
+Page Structure
+Dashboard - File upload, recent files, statistics
+Editor - Main editing interface with question list + editor
+Batch Tools - Grade-based splitting, bulk operations
+Settings - Display preferences, AI API configuration
+Help - Keyboard shortcuts, validation rules reference
+Key User Workflows
+Quick Review: Load XML → Navigate through questions → Mark issues → Export
+Deep Edit: Load XML → Edit question text/choices → Validate → Save changes
+Batch Processing: Load XML → Filter by grade → Bulk edit themes → Export by grade
+Error Fixing: Load XML → Run validators → Fix flagged issues → Re-validate
+AI Enhancement: Load XML → Select problematic explanations → AI rewrite → Review → Save
+Quality Assurance Features
+Validation summary before export
+Change tracking with revision history
+Export preview with sample questions
+Mandatory review checklist for critical questions
+Backup/restore functionality
+Build this as a modern, professional web application that educational content teams can use efficiently to review hundreds of math questions quickly while maintaining high quality standards.
+
