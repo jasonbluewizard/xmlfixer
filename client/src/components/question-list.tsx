@@ -90,7 +90,7 @@ export default function QuestionList({
 
   if (isError) {
     return (
-      <div className="w-96 bg-white border-r border-slate-200 flex items-center justify-center">
+      <div className="w-96 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
         <div className="text-center p-6">
           <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <p className="text-slate-600">Failed to load questions</p>
@@ -100,9 +100,9 @@ export default function QuestionList({
   }
 
   return (
-    <aside className="w-96 bg-white border-r border-slate-200 flex flex-col">
+    <aside className="w-96 bg-slate-50 border-r border-slate-300 flex flex-col shadow-sm">
       {/* Search and filters */}
-      <div className="p-4 border-b border-slate-200">
+      <div className="p-4 border-b border-slate-300 bg-slate-50">
         <div className="space-y-3">
           {/* Search */}
           <div className="relative">
@@ -210,12 +210,12 @@ export default function QuestionList({
             No questions found
           </div>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-200">
             {paginatedQuestions.map((question) => (
               <div
                 key={question.id}
                 className={cn(
-                  "p-4 hover:bg-slate-50 cursor-pointer transition-colors border-l-4 border-l-transparent",
+                  "p-4 hover:bg-white cursor-pointer transition-colors border-l-4 border-l-transparent bg-slate-50",
                   selectedQuestionId === question.id && "bg-blue-50 border-l-primary",
                   getStatusColor(question)
                 )}
@@ -254,7 +254,7 @@ export default function QuestionList({
       
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="border-t border-slate-200 p-4">
+        <div className="border-t border-slate-300 p-4 bg-slate-50">
           <div className="flex items-center justify-between">
             <Button
               variant="outline"

@@ -16,6 +16,7 @@ Preferred communication style: Simple, everyday language.
 - Removed separate "Correct Answer" field from question editor interface
 - Updated choices section to highlight correct answer in green with check mark icon
 - Correct choice now shows green background, green border, and green text
+- Enhanced color scheme with distinct left sidebar (slate-100 background) for better visual separation from main content
 
 ## System Architecture
 
