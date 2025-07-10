@@ -93,7 +93,7 @@ export default function QuestionList({
       <div className="w-96 bg-slate-50 border-r border-slate-300 flex items-center justify-center">
         <div className="text-center p-6">
           <XCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
-          <p className="text-slate-600">Failed to load questions</p>
+          <p className="text-slate-500">Failed to load questions</p>
         </div>
       </div>
     );
@@ -179,7 +179,7 @@ export default function QuestionList({
               <ArrowRight className="h-4 w-4" />
             </Button>
             <div className="flex-1 text-right">
-              <span className="text-sm text-slate-600">
+              <span className="text-sm text-slate-500">
                 {questions.length > 0 ? (
                   <>
                     Question <span className="font-medium">{((currentPage - 1) * questionsPerPage) + 1}</span>-
@@ -206,7 +206,7 @@ export default function QuestionList({
             ))}
           </div>
         ) : paginatedQuestions.length === 0 ? (
-          <div className="p-4 text-center text-slate-500">
+          <div className="p-4 text-center text-slate-400">
             No questions found
           </div>
         ) : (
@@ -237,11 +237,11 @@ export default function QuestionList({
                     {getStatusIcon(question)}
                   </div>
                   
-                  <p className="text-sm font-medium text-slate-800 line-clamp-2">
+                  <p className="text-sm font-medium text-slate-600 line-clamp-2">
                     {question.questionText}
                   </p>
                   
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-slate-400">
                     <span>Answer: <span className="font-medium">{question.answerKey}</span></span>
                     <span>#{question.id}</span>
                   </div>
@@ -265,7 +265,7 @@ export default function QuestionList({
               <ChevronLeft className="h-4 w-4 mr-1" />
               Previous
             </Button>
-            <span className="text-sm text-slate-600">
+            <span className="text-sm text-slate-500">
               Page {currentPage} of {totalPages}
             </span>
             <Button
