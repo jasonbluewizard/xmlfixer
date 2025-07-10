@@ -72,8 +72,22 @@ export class MemStorage implements IStorage {
     const id = this.currentQuestionId++;
     const now = new Date();
     const question: Question = {
-      ...insertQuestion,
       id,
+      xmlId: insertQuestion.xmlId,
+      grade: insertQuestion.grade,
+      domain: insertQuestion.domain,
+      standard: insertQuestion.standard,
+      tier: insertQuestion.tier,
+      questionText: insertQuestion.questionText,
+      correctAnswer: insertQuestion.correctAnswer,
+      answerKey: insertQuestion.answerKey,
+      choices: insertQuestion.choices as string[],
+      explanation: insertQuestion.explanation,
+      theme: insertQuestion.theme,
+      tokensUsed: insertQuestion.tokensUsed ?? 0,
+      status: insertQuestion.status ?? "pending",
+      validationStatus: insertQuestion.validationStatus ?? "pending",
+      validationErrors: (insertQuestion.validationErrors as string[]) ?? [],
       createdAt: now,
       updatedAt: now,
     };
@@ -86,8 +100,23 @@ export class MemStorage implements IStorage {
     if (!existing) return undefined;
     
     const updated: Question = {
-      ...existing,
-      ...updateQuestion,
+      id: existing.id,
+      xmlId: updateQuestion.xmlId ?? existing.xmlId,
+      grade: updateQuestion.grade ?? existing.grade,
+      domain: updateQuestion.domain ?? existing.domain,
+      standard: updateQuestion.standard ?? existing.standard,
+      tier: updateQuestion.tier ?? existing.tier,
+      questionText: updateQuestion.questionText ?? existing.questionText,
+      correctAnswer: updateQuestion.correctAnswer ?? existing.correctAnswer,
+      answerKey: updateQuestion.answerKey ?? existing.answerKey,
+      choices: (updateQuestion.choices as string[]) ?? existing.choices,
+      explanation: updateQuestion.explanation ?? existing.explanation,
+      theme: updateQuestion.theme ?? existing.theme,
+      tokensUsed: updateQuestion.tokensUsed ?? existing.tokensUsed,
+      status: updateQuestion.status ?? existing.status,
+      validationStatus: updateQuestion.validationStatus ?? existing.validationStatus,
+      validationErrors: (updateQuestion.validationErrors as string[]) ?? existing.validationErrors,
+      createdAt: existing.createdAt,
       updatedAt: new Date(),
     };
     this.questions.set(id, updated);

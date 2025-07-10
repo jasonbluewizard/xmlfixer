@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<questions>
+  <question id="G6_SP_6_SP_B_5_1752180484027">
+    <grade>6</grade>
+    <domain>SP</domain>
+    <standard>6.SP.B.5</standard>
+    <tier>1</tier>
+    <questionText><![CDATA[A wizard is making magical potions. She has 24 vials and wants to arrange them in equal rows. How many different ways can she arrange the vials so that each row has the same number of vials?]]></questionText>
+    <correctAnswer><![CDATA[The wizard can arrange the vials in 8 different ways: 1×24, 2×12, 3×8, 4×6, 6×4, 8×3, 12×2, and 24×1.]]></correctAnswer>
+    <answerKey>C</answerKey>
+    <choices>
+      <choice>4 ways</choice>
+      <choice>6 ways</choice>
+      <choice>8 ways</choice>
+      <choice>12 ways</choice>
+    </choices>
+    <explanation><![CDATA[To find the number of ways to arrange 24 vials in equal rows, we need to find all the factor pairs of 24. The factors of 24 are: 1, 2, 3, 4, 6, 8, 12, and 24. The factor pairs are: (1,24), (2,12), (3,8), and (4,6). Since we can also reverse these pairs, we have 8 different arrangements: 1×24, 2×12, 3×8, 4×6, 6×4, 8×3, 12×2, and 24×1.]]></explanation>
+    <theme>potion-making</theme>
+    <tokensUsed>245</tokensUsed>
+    <status>completed</status>
+  </question>
+  <question id="G4_OA_4_OA_A_3_1752180484028">
+    <grade>4</grade>
+    <domain>OA</domain>
+    <standard>4.OA.A.3</standard>
+    <tier>2</tier>
+    <questionText><![CDATA[In the enchanted forest, there are 3 groups of magical trees. Each group has 15 trees. If 7 trees lose their magic, how many magical trees are left?]]></questionText>
+    <correctAnswer><![CDATA[38 magical trees are left.]]></correctAnswer>
+    <answerKey>B</answerKey>
+    <choices>
+      <choice>35 trees</choice>
+      <choice>38 trees</choice>
+      <choice>42 trees</choice>
+      <choice>45 trees</choice>
+    </choices>
+    <explanation><![CDATA[First, find the total number of trees: 3 groups × 15 trees = 45 trees. Then subtract the trees that lost their magic: 45 - 7 = 38 magical trees remaining.]]></explanation>
+    <theme>forest-adventure</theme>
+    <tokensUsed>189</tokensUsed>
+    <status>review</status>
+  </question>
+  <question id="G2_NBT_2_NBT_B_5_1752180484029">
+    <grade>2</grade>
+    <domain>NBT</domain>
+    <standard>2.NBT.B.5</standard>
+    <tier>1</tier>
+    <questionText><![CDATA[Captain Redbeard has 47 gold coins. He finds 26 more coins in a treasure chest. How many gold coins does he have now?]]></questionText>
+    <correctAnswer><![CDATA[73 gold coins]]></correctAnswer>
+    <answerKey>A</answerKey>
+    <choices>
+      <choice>73 coins</choice>
+      <choice>71 coins</choice>
+      <choice>63 coins</choice>
+      <choice>53 coins</choice>
+    </choices>
+    <explanation><![CDATA[To find the total, add the coins Captain Redbeard already had to the coins he found: 47 + 26 = 73 gold coins.]]></explanation>
+    <theme>pirate-treasure</theme>
+    <tokensUsed>142</tokensUsed>
+    <status>completed</status>
+  </question>
+  <question id="G5_NF_5_NF_B_3_1752180484030">
+    <grade>5</grade>
+    <domain>NF</domain>
+    <standard>5.NF.B.3</standard>
+    <tier>3</tier>
+    <questionText><![CDATA[A space explorer has 2/3 of a fuel tank. She uses 1/4 of the tank during her mission. What fraction of the fuel tank is left?]]></questionText>
+    <correctAnswer><![CDATA[5/12 of the fuel tank is left.]]></correctAnswer>
+    <answerKey>D</answerKey>
+    <choices>
+      <choice>1/3</choice>
+      <choice>3/7</choice>
+      <choice>7/12</choice>
+      <choice>5/12</choice>
+    </choices>
+    <explanation><![CDATA[To subtract fractions, find a common denominator. 2/3 = 8/12 and 1/4 = 3/12. So 8/12 - 3/12 = 5/12 of the fuel tank remains.]]></explanation>
+    <theme>space-mission</theme>
+    <tokensUsed>198</tokensUsed>
+    <status>pending</status>
+  </question>
+</questions>

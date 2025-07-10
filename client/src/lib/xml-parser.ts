@@ -1,76 +1,37 @@
 import { type InsertQuestion } from "@shared/schema";
+import { XMLParser } from "fast-xml-parser";
 
 export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(xmlContent, "application/xml");
-  
-  // Check for parsing errors
-  const parserError = doc.querySelector("parsererror");
-  if (parserError) {
-    throw new Error("Invalid XML format");
-  }
-  
-  const questionElements = doc.querySelectorAll("question");
-  const questions: InsertQuestion[] = [];
-  
-  questionElements.forEach((questionEl) => {
-    try {
-      const xmlId = questionEl.getAttribute("id") || "";
-      const grade = parseInt(questionEl.querySelector("grade")?.textContent || "1");
-      const domain = questionEl.querySelector("domain")?.textContent || "";
-      const standard = questionEl.querySelector("standard")?.textContent || "";
-      const tier = parseInt(questionEl.querySelector("tier")?.textContent || "1");
-      const questionText = extractCDATA(questionEl.querySelector("questionText"));
-      const correctAnswer = extractCDATA(questionEl.querySelector("correctAnswer"));
-      const answerKey = questionEl.querySelector("answerKey")?.textContent || "A";
-      const explanation = extractCDATA(questionEl.querySelector("explanation"));
-      const theme = questionEl.querySelector("theme")?.textContent || "";
-      const tokensUsed = parseInt(questionEl.querySelector("tokensUsed")?.textContent || "0");
-      const status = questionEl.querySelector("status")?.textContent || "pending";
-      
-      const choiceElements = questionEl.querySelectorAll("choices choice");
-      const choices: string[] = [];
-      choiceElements.forEach((choiceEl) => {
-        choices.push(choiceEl.textContent || "");
-      });
-      
-      questions.push({
-        xmlId,
-        grade,
-        domain,
-        standard,
-        tier,
-        questionText,
-        correctAnswer,
-        answerKey,
-        choices,
-        explanation,
-        theme,
-        tokensUsed,
-        status,
-        validationStatus: "pending",
-        validationErrors: [],
-      });
-    } catch (error) {
-      console.error("Error parsing question:", error);
-      // Skip invalid questions
-    }
-  });
-  
-  return questions;
-}
+  const parser = new XMLParser({ ignoreAttributes: false });
+  const parsed = parser.parse(xmlContent) as any;
 
-function extractCDATA(element: Element | null): string {
-  if (!element) return "";
-  
-  // Check for CDATA sections
-  const cdata = element.querySelector("![CDATA[");
-  if (cdata) {
-    return cdata.textContent || "";
-  }
-  
-  // Fallback to regular text content
-  return element.textContent || "";
+  const questionNodes = parsed?.questions?.question;
+  if (!questionNodes) return [];
+
+  const nodesArray = Array.isArray(questionNodes) ? questionNodes : [questionNodes];
+
+  return nodesArray.map((q: any) => {
+    const choicesData = q.choices?.choice ?? [];
+    const choicesArray = Array.isArray(choicesData) ? choicesData : [choicesData];
+
+    return {
+      xmlId: q["@_id"] ?? "",
+      grade: parseInt(String(q.grade ?? "1")),
+      domain: q.domain ?? "",
+      standard: q.standard ?? "",
+      tier: parseInt(String(q.tier ?? "1")),
+      questionText: String(q.questionText ?? ""),
+      correctAnswer: String(q.correctAnswer ?? ""),
+      answerKey: String(q.answerKey ?? "A"),
+      choices: choicesArray.map((c: any) => String(c ?? "")),
+      explanation: String(q.explanation ?? ""),
+      theme: q.theme ?? "",
+      tokensUsed: parseInt(String(q.tokensUsed ?? "0")),
+      status: q.status ?? "pending",
+      validationStatus: "pending",
+      validationErrors: [],
+    };
+  });
 }
 
 export function generateXmlFromQuestions(questions: any[]): string {
