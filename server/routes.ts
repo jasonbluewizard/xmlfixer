@@ -5,7 +5,12 @@ import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema } from 
 import multer from "multer";
 import { z } from "zod";
 
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB limit
+  },
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Get all questions with optional filters
@@ -107,28 +112,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const xmlContent = req.file.buffer.toString("utf-8");
       const filename = req.file.originalname;
 
+      console.log(`Processing XML file: ${filename} (${Math.round(xmlContent.length / 1024)}KB)`);
+
       // Parse XML and extract questions
       const { parseXmlQuestions } = await import("../client/src/lib/xml-parser");
       const parsedQuestions = parseXmlQuestions(xmlContent);
 
+      console.log(`Parsed ${parsedQuestions.length} questions from XML`);
+
       // Create XML file record
       const xmlFile = await storage.createXmlFile({
         filename,
-        originalContent: xmlContent,
+        originalContent: xmlContent.substring(0, 10000), // Store only first 10KB for large files
         questionCount: parsedQuestions.length,
       });
 
-      // Create questions in storage
-      const questions = await storage.createQuestions(parsedQuestions);
+      // Create questions in storage in batches to avoid memory issues
+      const batchSize = 100;
+      const questions: any[] = [];
+      
+      for (let i = 0; i < parsedQuestions.length; i += batchSize) {
+        const batch = parsedQuestions.slice(i, i + batchSize);
+        const batchQuestions = await storage.createQuestions(batch);
+        questions.push(...batchQuestions);
+        console.log(`Processed batch ${Math.floor(i / batchSize) + 1}/${Math.ceil(parsedQuestions.length / batchSize)}`);
+      }
 
       res.json({
         xmlFile,
-        questions,
+        questions: questions.slice(0, 10), // Return only first 10 for performance
+        totalQuestions: questions.length,
         message: `Successfully imported ${questions.length} questions from ${filename}`,
       });
     } catch (error) {
       console.error("Error uploading XML file:", error);
-      res.status(500).json({ message: "Failed to process XML file" });
+      res.status(500).json({ 
+        message: "Failed to process XML file", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 

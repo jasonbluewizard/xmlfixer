@@ -100,7 +100,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
                     {isDragOver ? "Drop your XML file here" : "Choose XML file"}
                   </p>
                   <p className="text-sm text-slate-500 mt-1">
-                    Maximum file size: 10MB
+                    Maximum file size: 50MB
                   </p>
                 </div>
               </div>
@@ -135,7 +135,7 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
                 {uploadXml.isPending ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                    Uploading...
+                    Processing...
                   </>
                 ) : (
                   <>
@@ -147,11 +147,20 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
             </div>
           )}
 
+          {uploadXml.isPending && (
+            <div className="flex items-center space-x-2 text-blue-600">
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600" />
+              <span className="text-sm">
+                Processing large XML file... This may take a few minutes.
+              </span>
+            </div>
+          )}
+
           {uploadXml.isError && (
             <div className="flex items-center space-x-2 text-destructive">
               <AlertCircle className="h-4 w-4" />
               <span className="text-sm">
-                Failed to upload file. Please check the XML format and try again.
+                Failed to upload file. {uploadXml.error?.message || "Please check the XML format and try again."}
               </span>
             </div>
           )}

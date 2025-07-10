@@ -136,7 +136,7 @@ export function useUploadXml() {
       queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
       toast({
         title: "Success",
-        description: data.message,
+        description: data.message || `Uploaded ${data.totalQuestions || data.questions?.length || 0} questions`,
       });
     },
     onError: (error) => {
