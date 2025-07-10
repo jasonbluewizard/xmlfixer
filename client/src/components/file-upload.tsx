@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useUploadXml } from "@/hooks/use-questions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,7 +12,10 @@ interface FileUploadProps {
 export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadXml = useUploadXml();
+
+  console.log('FileUpload render - file:', file?.name, 'size:', file?.size);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -43,7 +46,12 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
     const files = e.target.files;
     if (files && files[0]) {
       console.log('File selected:', files[0].name, 'Size:', files[0].size);
+      console.log('Setting file state...');
       setFile(files[0]);
+      console.log('File state set, current file:', files[0].name);
+      
+      // Clear the input to allow re-selection of the same file
+      e.target.value = '';
     }
   }, []);
 
@@ -83,6 +91,10 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
             <p className="text-sm text-slate-600">
               Drag and drop your XML file or click to browse
             </p>
+            {/* Debug info */}
+            <p className="text-xs text-gray-400 mt-1">
+              Debug: File state = {file ? `${file.name} (${file.size} bytes)` : 'null'}
+            </p>
           </div>
 
           <div
@@ -98,11 +110,11 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
             onDrop={handleDrop}
             onClick={() => {
               console.log('Upload area clicked');
-              document.getElementById("file-input")?.click();
+              fileInputRef.current?.click();
             }}
           >
             <input
-              id="file-input"
+              ref={fileInputRef}
               type="file"
               accept=".xml"
               className="hidden"
@@ -145,7 +157,10 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
                 Remove
               </Button>
               <Button
-                onClick={handleUpload}
+                onClick={() => {
+                  console.log('Upload button clicked, file:', file?.name);
+                  handleUpload();
+                }}
                 disabled={uploadXml.isPending}
                 className="flex-1"
               >
