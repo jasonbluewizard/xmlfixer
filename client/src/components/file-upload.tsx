@@ -1,0 +1,162 @@
+import { useState, useCallback } from "react";
+import { useUploadXml } from "@/hooks/use-questions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Upload, FileX, CheckCircle, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+interface FileUploadProps {
+  onUploadComplete?: () => void;
+}
+
+export default function FileUpload({ onUploadComplete }: FileUploadProps) {
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const uploadXml = useUploadXml();
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    
+    const files = Array.from(e.dataTransfer.files);
+    const xmlFile = files.find(f => f.name.endsWith('.xml'));
+    
+    if (xmlFile) {
+      setFile(xmlFile);
+    }
+  }, []);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      setFile(files[0]);
+    }
+  }, []);
+
+  const handleUpload = useCallback(() => {
+    if (!file) return;
+    
+    uploadXml.mutate(file, {
+      onSuccess: () => {
+        setFile(null);
+        onUploadComplete?.();
+      },
+    });
+  }, [file, uploadXml, onUploadComplete]);
+
+  const handleRemoveFile = useCallback(() => {
+    setFile(null);
+  }, []);
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto">
+      <CardContent className="p-6">
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">
+              Upload XML Question File
+            </h3>
+            <p className="text-sm text-slate-600">
+              Drag and drop your XML file or click to browse
+            </p>
+          </div>
+
+          <div
+            className={cn(
+              "border-2 border-dashed rounded-lg p-8 text-center transition-colors cursor-pointer",
+              isDragOver
+                ? "border-primary bg-primary/5"
+                : "border-slate-300 hover:border-slate-400",
+              uploadXml.isPending && "pointer-events-none opacity-50"
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => document.getElementById("file-input")?.click()}
+          >
+            <input
+              id="file-input"
+              type="file"
+              accept=".xml"
+              className="hidden"
+              onChange={handleFileSelect}
+            />
+            
+            {!file ? (
+              <div className="space-y-3">
+                <Upload className="h-12 w-12 text-slate-400 mx-auto" />
+                <div>
+                  <p className="text-slate-600 font-medium">
+                    {isDragOver ? "Drop your XML file here" : "Choose XML file"}
+                  </p>
+                  <p className="text-sm text-slate-500 mt-1">
+                    Maximum file size: 10MB
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-center space-x-2">
+                  <CheckCircle className="h-6 w-6 text-success" />
+                  <span className="font-medium text-slate-800">{file.name}</span>
+                </div>
+                <p className="text-sm text-slate-600">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+            )}
+          </div>
+
+          {file && (
+            <div className="flex items-center justify-between space-x-3">
+              <Button
+                variant="outline"
+                onClick={handleRemoveFile}
+                disabled={uploadXml.isPending}
+              >
+                <FileX className="h-4 w-4 mr-2" />
+                Remove
+              </Button>
+              <Button
+                onClick={handleUpload}
+                disabled={uploadXml.isPending}
+                className="flex-1"
+              >
+                {uploadXml.isPending ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload & Parse
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {uploadXml.isError && (
+            <div className="flex items-center space-x-2 text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm">
+                Failed to upload file. Please check the XML format and try again.
+              </span>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
