@@ -13,10 +13,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
-import { useUpdateQuestion } from "@/hooks/use-questions";
+import { useUpdateQuestion, useDeleteQuestion } from "@/hooks/use-questions";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { validateQuestion } from "@/lib/validators";
-import { ChevronDown, ChevronUp, Save, Play, CheckCircle, AlertTriangle, XCircle, ArrowLeft, ArrowRight, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Save, Play, CheckCircle, AlertTriangle, XCircle, ArrowLeft, ArrowRight, X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Question } from "@shared/schema";
 import { DOMAINS, GRADES, STATUS_OPTIONS, ANSWER_KEYS } from "@/types/question";
@@ -58,6 +58,7 @@ export default function QuestionEditor({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   const updateQuestion = useUpdateQuestion();
+  const deleteQuestion = useDeleteQuestion();
   
   const form = useForm<QuestionFormData>({
     resolver: zodResolver(questionSchema),
@@ -182,6 +183,27 @@ export default function QuestionEditor({
         status: question.status || "pending",
       });
       setHasUnsavedChanges(false);
+    }
+  };
+
+  const handleDeleteQuestion = () => {
+    if (!question) return;
+    
+    const confirmDelete = window.confirm(
+      `Are you sure you want to delete this question? This action cannot be undone.\n\nQuestion: ${question.questionText.substring(0, 100)}...`
+    );
+    
+    if (confirmDelete) {
+      deleteQuestion.mutate(question.id, {
+        onSuccess: () => {
+          // Navigate to previous question if available, otherwise next
+          if (hasPrevious) {
+            onPrevious?.();
+          } else if (hasNext) {
+            onNext?.();
+          }
+        }
+      });
     }
   };
 
@@ -594,6 +616,15 @@ export default function QuestionEditor({
             >
               <ArrowLeft className="h-4 w-4 mr-1" />
               Previous
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDeleteQuestion}
+              disabled={deleteQuestion.isPending}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              {deleteQuestion.isPending ? 'Deleting...' : 'Delete'}
             </Button>
             <Button
               variant="outline"
