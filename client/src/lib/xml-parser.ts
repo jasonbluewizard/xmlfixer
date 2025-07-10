@@ -2,15 +2,33 @@ import { type InsertQuestion } from "@shared/schema";
 import { XMLParser } from "fast-xml-parser";
 
 export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
-  const parser = new XMLParser({ ignoreAttributes: false });
+  console.log('Parsing XML content, length:', xmlContent.length);
+  
+  const parser = new XMLParser({ 
+    ignoreAttributes: false,
+    parseAttributeValue: true,
+    trimValues: true,
+    parseTrueNumberOnly: false,
+    parseNodeValue: true
+  });
+  
   const parsed = parser.parse(xmlContent) as any;
+  console.log('Parsed XML root keys:', Object.keys(parsed));
 
   const questionNodes = parsed?.questions?.question;
-  if (!questionNodes) return [];
+  if (!questionNodes) {
+    console.log('No question nodes found in XML');
+    return [];
+  }
 
   const nodesArray = Array.isArray(questionNodes) ? questionNodes : [questionNodes];
+  console.log('Found', nodesArray.length, 'questions in XML');
 
-  return nodesArray.map((q: any) => {
+  return nodesArray.map((q: any, index: number) => {
+    if (index < 3) {
+      console.log('Processing question', index, 'with id:', q["@_id"]);
+    }
+    
     const choicesData = q.choices?.choice ?? [];
     const choicesArray = Array.isArray(choicesData) ? choicesData : [choicesData];
 

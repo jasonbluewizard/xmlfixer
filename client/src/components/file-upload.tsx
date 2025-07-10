@@ -46,10 +46,15 @@ export default function FileUpload({ onUploadComplete }: FileUploadProps) {
   const handleUpload = useCallback(() => {
     if (!file) return;
     
+    console.log('Starting upload for file:', file.name);
     uploadXml.mutate(file, {
       onSuccess: () => {
+        console.log('Upload completed successfully');
         setFile(null);
         onUploadComplete?.();
+      },
+      onError: (error) => {
+        console.error('Upload failed:', error);
       },
     });
   }, [file, uploadXml, onUploadComplete]);

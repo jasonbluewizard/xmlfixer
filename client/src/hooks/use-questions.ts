@@ -118,6 +118,8 @@ export function useUploadXml() {
   
   return useMutation({
     mutationFn: async (file: File) => {
+      console.log('Starting upload for file:', file.name, 'Size:', file.size);
+      
       const formData = new FormData();
       formData.append('file', file);
       
@@ -126,11 +128,17 @@ export function useUploadXml() {
         body: formData,
       });
       
+      console.log('Upload response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error('Upload failed');
+        const errorText = await response.text();
+        console.error('Upload failed:', errorText);
+        throw new Error(`Upload failed: ${response.status} ${errorText}`);
       }
       
-      return response.json();
+      const result = await response.json();
+      console.log('Upload result:', result);
+      return result;
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
@@ -140,9 +148,10 @@ export function useUploadXml() {
       });
     },
     onError: (error) => {
+      console.error('Upload error:', error);
       toast({
         title: "Error",
-        description: "Failed to upload XML file",
+        description: error instanceof Error ? error.message : "Failed to upload XML file",
         variant: "destructive",
       });
     },
