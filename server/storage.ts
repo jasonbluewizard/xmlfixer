@@ -18,6 +18,7 @@ export interface IStorage {
   // Batch operations
   createQuestions(questions: InsertQuestion[]): Promise<Question[]>;
   updateQuestions(updates: { id: number; question: UpdateQuestion }[]): Promise<Question[]>;
+  clearAllQuestions(): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -168,6 +169,11 @@ export class MemStorage implements IStorage {
       }
     }
     return questions;
+  }
+
+  async clearAllQuestions(): Promise<void> {
+    this.questions.clear();
+    this.currentQuestionId = 1;
   }
 }
 

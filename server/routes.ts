@@ -145,6 +145,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Parsed ${parsedQuestions.length} questions from XML`);
 
+      // Clear existing questions to avoid accumulation
+      await storage.clearAllQuestions();
+      console.log("Cleared existing questions from storage");
+
       // Create XML file record  
       const xmlFile = await storage.createXmlFile({
         filename,
