@@ -168,6 +168,7 @@ export class AIQuestionVerifier {
 
   /**
    * Verify a batch of questions (up to 20)
+   * Uses the same three-tier validation pipeline as individual verification for consistency
    */
   async verifyBatch(questions: Question[]): Promise<BatchVerificationResult> {
     if (questions.length === 0) {
@@ -179,27 +180,35 @@ export class AIQuestionVerifier {
     }
 
     try {
-      const prompt = this.buildBatchPrompt(questions);
+      console.log(`Starting batch verification for ${questions.length} questions using three-tier validation`);
       
-      const response = await openai.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: "system",
-            content: this.getBatchSystemPrompt()
-          },
-          {
-            role: "user",
-            content: prompt
+      // Run full individual verification for each question to ensure consistency
+      const individualResults = await Promise.all(
+        questions.map(async (question, index) => {
+          try {
+            console.log(`Verifying question ${index + 1}/${questions.length}: ${question.id}`);
+            return await this.verifyQuestion(question);
+          } catch (error) {
+            console.error(`Failed to verify question ${question.id}:`, error);
+            return this.createFallbackResult(question);
           }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.3,
-        max_tokens: 4000
-      });
+        })
+      );
 
-      const result = JSON.parse(response.choices[0].message.content);
-      return this.formatBatchResult(questions, result);
+      // Calculate batch summary
+      const batchSummary = {
+        averageScore: individualResults.reduce((sum, r) => sum + r.overallScore, 0) / individualResults.length,
+        totalIssues: individualResults.reduce((sum, r) => sum + r.issues.length, 0),
+        commonPatterns: this.identifyCommonPatterns(individualResults),
+        recommendations: this.generateBatchRecommendations(individualResults)
+      };
+
+      console.log(`Batch verification completed: ${batchSummary.averageScore.toFixed(1)} avg score, ${batchSummary.totalIssues} total issues`);
+
+      return {
+        questions: individualResults,
+        batchSummary
+      };
     } catch (error) {
       console.error('Error verifying batch:', error);
       throw new Error(`Failed to verify batch: ${error.message}`);
@@ -510,51 +519,76 @@ Provide individual analysis for each question plus batch-level insights about co
     };
   }
 
-  private formatBatchResult(questions: Question[], result: any): BatchVerificationResult {
-    const questionResults = questions.map((question, index) => {
-      const questionResult = result.questions?.[index] || {};
-      return {
-        questionId: question.id,
-        overallScore: Math.max(0, Math.min(100, questionResult.overallScore || 0)),
-        issues: (questionResult.issues || []).map((issue: any, issueIndex: number) => ({
-          id: issue.id || `batch_issue_${index}_${issueIndex}`,
-          type: issue.type || 'warning',
-          category: issue.category || 'clarity',
-          description: issue.description || '',
-          currentValue: issue.currentValue || '',
-          suggestedFix: issue.suggestedFix || '',
-          explanation: issue.explanation || '',
-          confidence: Math.max(0, Math.min(1, issue.confidence || 0.5)),
-          severity: issue.severity || 'minor',
-          automaticFix: issue.automaticFix || false,
-          validationMethod: issue.validationMethod || 'ai',
-          productionImpact: issue.productionImpact || 'minor_clarity'
-        })),
-        commonCoreAlignment: {
-          standard: questionResult.commonCoreAlignment?.standard || '',
-          alignmentScore: Math.max(0, Math.min(100, questionResult.commonCoreAlignment?.alignmentScore || 0)),
-          suggestions: questionResult.commonCoreAlignment?.suggestions || []
-        },
-        mathematicalValidation: questionResult.mathematicalValidation || {
-          sympyValidated: false,
-          computationalErrors: ['Validation unavailable'],
-          arithmeticConsistency: false,
-          answerExplanationMatch: false,
-          gradeAppropriate: false
-        },
-        summary: questionResult.summary || 'Analysis completed'
-      };
-    });
-
+  /**
+   * Create fallback result when verification fails
+   */
+  private createFallbackResult(question: Question): VerificationResult {
     return {
-      questions: questionResults,
-      batchSummary: {
-        averageScore: questionResults.reduce((sum, q) => sum + q.overallScore, 0) / questionResults.length,
-        totalIssues: questionResults.reduce((sum, q) => sum + q.issues.length, 0),
-        commonPatterns: result.batchSummary?.commonPatterns || [],
-        recommendations: result.batchSummary?.recommendations || []
-      }
+      questionId: question.id,
+      overallScore: 0,
+      issues: [{
+        id: 'fallback_error',
+        type: 'error',
+        category: 'clarity',
+        description: 'Verification failed - manual review required',
+        currentValue: 'Unknown',
+        suggestedFix: 'Manual review required',
+        explanation: 'Automated verification failed',
+        confidence: 0,
+        severity: 'major',
+        automaticFix: false,
+        validationMethod: 'hybrid',
+        productionImpact: 'minor_clarity'
+      }],
+      commonCoreAlignment: {
+        standard: question.standard || 'Unknown',
+        alignmentScore: 0,
+        suggestions: ['Verification failed - manual review required']
+      },
+      mathematicalValidation: this.createFallbackMathValidation(),
+      summary: 'Verification failed - manual review recommended'
     };
+  }
+
+  /**
+   * Identify common patterns across verification results
+   */
+  private identifyCommonPatterns(results: VerificationResult[]): string[] {
+    const patterns: string[] = [];
+    
+    const mathErrors = results.filter(r => r.issues.some(i => i.category === 'mathematical_accuracy')).length;
+    const gradeIssues = results.filter(r => r.issues.some(i => i.category === 'grade_appropriateness')).length;
+    const clarityIssues = results.filter(r => r.issues.some(i => i.category === 'clarity')).length;
+    
+    if (mathErrors > 0) patterns.push(`${mathErrors} questions with mathematical errors`);
+    if (gradeIssues > 0) patterns.push(`${gradeIssues} questions with grade-level issues`);
+    if (clarityIssues > 0) patterns.push(`${clarityIssues} questions with clarity issues`);
+    
+    return patterns;
+  }
+
+  /**
+   * Generate batch recommendations based on results
+   */
+  private generateBatchRecommendations(results: VerificationResult[]): string[] {
+    const recommendations: string[] = [];
+    
+    const avgScore = results.reduce((sum, r) => sum + r.overallScore, 0) / results.length;
+    const criticalIssues = results.reduce((sum, r) => sum + r.issues.filter(i => i.severity === 'critical').length, 0);
+    
+    if (avgScore < 50) {
+      recommendations.push("Consider comprehensive review - average quality below acceptable threshold");
+    }
+    
+    if (criticalIssues > 0) {
+      recommendations.push(`Address ${criticalIssues} critical issues that may block student grading`);
+    }
+    
+    if (avgScore >= 80) {
+      recommendations.push("Quality meets standards - consider for production use");
+    }
+    
+    return recommendations;
   }
 }
 
