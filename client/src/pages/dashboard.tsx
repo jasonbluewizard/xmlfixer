@@ -10,7 +10,7 @@ import FileUpload from "@/components/file-upload";
 import QuestionList from "@/components/question-list";
 import QuestionEditor from "@/components/question-editor";
 import ValidationPanel from "@/components/validation-panel";
-import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo } from "lucide-react";
+import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo, Merge, Split } from "lucide-react";
 import { type Question } from "@shared/schema";
 import { type QuestionFilters } from "@/types/question";
 import { DOMAINS, GRADES } from "@/types/question";
@@ -20,7 +20,11 @@ export default function Dashboard() {
   const [filters, setFilters] = useState<QuestionFilters>({});
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
+  const [isMergeOpen, setIsMergeOpen] = useState(false);
+  const [isSplitOpen, setIsSplitOpen] = useState(false);
   const [exportFilters, setExportFilters] = useState<{ grade?: string; domain?: string }>({});
+  const [mergeFiles, setMergeFiles] = useState<File[]>([]);
+  const [splitOptions, setSplitOptions] = useState<{ type: 'grade' | 'theme'; filename: string }>({ type: 'grade', filename: 'questions' });
   
   const { data: questions = [], isLoading } = useQuestions(filters);
   
@@ -94,6 +98,69 @@ export default function Dashboard() {
     link.click();
     document.body.removeChild(link);
     setIsExportOpen(false);
+  };
+
+  const handleMergeFiles = async () => {
+    if (mergeFiles.length === 0) return;
+    
+    try {
+      const formData = new FormData();
+      mergeFiles.forEach((file, index) => {
+        formData.append(`file${index}`, file);
+      });
+      
+      const response = await fetch('/api/xml/merge', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to merge files');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'merged_questions.xml';
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      setMergeFiles([]);
+      setIsMergeOpen(false);
+    } catch (error) {
+      console.error('Error merging files:', error);
+    }
+  };
+
+  const handleSplitFile = async () => {
+    if (questions.length === 0) return;
+    
+    try {
+      const params = new URLSearchParams();
+      params.append('type', splitOptions.type);
+      params.append('filename', splitOptions.filename);
+      
+      const response = await fetch(`/api/xml/split?${params.toString()}`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to split file');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${splitOptions.filename}_split.zip`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      setIsSplitOpen(false);
+    } catch (error) {
+      console.error('Error splitting file:', error);
+    }
   };
 
   const validationStats = {
@@ -212,6 +279,108 @@ export default function Dashboard() {
                       </Button>
                       <Button onClick={handleExport}>
                         Export XML
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isMergeOpen} onOpenChange={setIsMergeOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Merge className="h-4 w-4 mr-1" />
+                    Merge
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Merge XML Files</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Select XML Files to Merge</label>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".xml"
+                        onChange={(e) => setMergeFiles(Array.from(e.target.files || []))}
+                        className="w-full"
+                      />
+                    </div>
+                    
+                    {mergeFiles.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Selected Files:</label>
+                        <div className="space-y-1">
+                          {mergeFiles.map((file, index) => (
+                            <div key={index} className="text-sm bg-slate-100 p-2 rounded">
+                              {file.name} ({Math.round(file.size / 1024)} KB)
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsMergeOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleMergeFiles} disabled={mergeFiles.length === 0}>
+                        Merge Files
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isSplitOpen} onOpenChange={setIsSplitOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Split className="h-4 w-4 mr-1" />
+                    Split
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Split Current Questions</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Split By</label>
+                      <Select value={splitOptions.type} onValueChange={(value) => 
+                        setSplitOptions(prev => ({ ...prev, type: value as 'grade' | 'theme' }))
+                      }>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="grade">Grade Level</SelectItem>
+                          <SelectItem value="theme">Theme</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Output Filename Prefix</label>
+                      <input
+                        type="text"
+                        value={splitOptions.filename}
+                        onChange={(e) => setSplitOptions(prev => ({ ...prev, filename: e.target.value }))}
+                        className="w-full p-2 border rounded"
+                        placeholder="questions"
+                      />
+                    </div>
+                    
+                    <div className="text-sm text-slate-600">
+                      This will create separate XML files for each {splitOptions.type} and download them as a ZIP file.
+                    </div>
+                    
+                    <div className="flex justify-end space-x-2">
+                      <Button variant="outline" onClick={() => setIsSplitOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSplitFile} disabled={questions.length === 0}>
+                        Split File
                       </Button>
                     </div>
                   </div>

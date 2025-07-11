@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 11, 2025
+- Added automatic validation system for groups of 20 questions with manual trigger button
+- Implemented visual status indicators (green check, yellow warning, red error) for validation results
+- Added XML file merging functionality to combine multiple XML files into one
+- Implemented XML file splitting capability to separate large files by grade or theme
+- Enhanced backend API with merge/split endpoints and proper ZIP file generation
+- Disabled auto-validation by default to give users control over when validation runs
+
 ### July 10, 2025
 - Successfully resolved XML upload functionality - file selection and upload working correctly
 - Added delete button for removing bad questions with confirmation dialog
@@ -69,6 +77,14 @@ Preferred communication style: Simple, everyday language.
 - **Grade Appropriateness**: Validates number ranges for grade levels
 - **Answer Consistency**: Ensures answers match explanations
 - **Content Validation**: Checks for duplicate choices and content length
+- **Batch Validation**: Processes 20 questions at a time with visual feedback
+- **Status Indicators**: Green check (valid), yellow warning (warnings), red error (errors)
+
+### 5. XML File Management
+- **File Merging**: Combines multiple XML files into a single file
+- **File Splitting**: Separates large XML files by grade level or theme
+- **ZIP Generation**: Creates compressed archives for split files
+- **Format Preservation**: Maintains original XML structure and CDATA sections
 
 ## Data Flow
 

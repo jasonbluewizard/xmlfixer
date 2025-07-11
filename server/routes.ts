@@ -4,6 +4,11 @@ import { storage } from "./storage";
 import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema } from "@shared/schema";
 import multer from "multer";
 import { z } from "zod";
+import { XMLParser } from "fast-xml-parser";
+import { writeFileSync, readFileSync } from "fs";
+import path from "path";
+import { tmpdir } from "os";
+import { execSync } from "child_process";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -203,8 +208,173 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Merge multiple XML files
+  app.post("/api/xml/merge", upload.array('file'), async (req, res) => {
+    try {
+      const files = req.files as Express.Multer.File[];
+      if (!files || files.length === 0) {
+        return res.status(400).json({ message: "No files provided" });
+      }
+
+      let allQuestions: any[] = [];
+      
+      for (const file of files) {
+        const xmlContent = file.buffer.toString('utf-8');
+        try {
+          const questions = parseXmlQuestions(xmlContent);
+          allQuestions.push(...questions);
+        } catch (error) {
+          console.error(`Error parsing file ${file.originalname}:`, error);
+          continue;
+        }
+      }
+
+      if (allQuestions.length === 0) {
+        return res.status(400).json({ message: "No valid questions found in any file" });
+      }
+
+      // Generate merged XML
+      const mergedXml = generateXmlFromQuestions(allQuestions);
+      
+      res.setHeader("Content-Type", "application/xml");
+      res.setHeader("Content-Disposition", `attachment; filename="merged_questions.xml"`);
+      res.send(mergedXml);
+    } catch (error) {
+      console.error("Error merging XML files:", error);
+      res.status(500).json({ message: "Failed to merge XML files" });
+    }
+  });
+
+  // Split XML file by grade or theme
+  app.post("/api/xml/split", async (req, res) => {
+    try {
+      const { type, filename } = req.query;
+      const questions = await storage.getQuestions();
+      
+      if (questions.length === 0) {
+        return res.status(400).json({ message: "No questions to split" });
+      }
+
+      const splitGroups: Record<string, any[]> = {};
+      
+      // Group questions by the specified type
+      questions.forEach(question => {
+        const key = type === 'grade' ? `grade_${question.grade}` : question.theme;
+        if (!splitGroups[key]) {
+          splitGroups[key] = [];
+        }
+        splitGroups[key].push(question);
+      });
+
+      // Generate XML files for each group
+      const zipContent = await generateZipFromGroups(splitGroups, filename as string || 'questions');
+      
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename || 'questions'}_split.zip"`);
+      res.send(zipContent);
+    } catch (error) {
+      console.error("Error splitting XML file:", error);
+      res.status(500).json({ message: "Failed to split XML file" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
+}
+
+function parseXmlQuestions(xmlContent: string): any[] {
+  const parser = new XMLParser({ 
+    ignoreAttributes: false,
+    parseAttributeValue: true,
+    trimValues: true,
+    parseTrueNumberOnly: false,
+    parseNodeValue: true
+  });
+  
+  const parsed = parser.parse(xmlContent) as any;
+  const questionNodes = parsed?.questions?.question;
+  if (!questionNodes) {
+    return [];
+  }
+
+  const nodesArray = Array.isArray(questionNodes) ? questionNodes : [questionNodes];
+  
+  return nodesArray.map((q: any) => {
+    const choicesData = q.choices?.choice ?? [];
+    const choicesArray = Array.isArray(choicesData) ? choicesData : [choicesData];
+
+    return {
+      xmlId: q["@_id"] ?? "",
+      grade: parseInt(String(q.grade ?? "1")),
+      domain: q.domain ?? "",
+      standard: q.standard ?? "",
+      tier: parseInt(String(q.tier ?? "1")),
+      questionText: String(q.questionText ?? ""),
+      correctAnswer: String(q.correctAnswer ?? ""),
+      answerKey: String(q.answerKey ?? "A"),
+      choices: choicesArray.map((c: any) => String(c ?? "")),
+      explanation: String(q.explanation ?? ""),
+      theme: q.theme ?? "",
+      tokensUsed: parseInt(String(q.tokensUsed ?? "0")),
+      status: q.status ?? "pending",
+      validationStatus: "pending",
+      validationErrors: [],
+    };
+  });
+}
+
+async function generateZipFromGroups(groups: Record<string, any[]>, baseFilename: string): Promise<Buffer> {
+  const tempDir = tmpdir();
+  const zipPath = path.join(tempDir, `${baseFilename}_split.zip`);
+  
+  // Create individual XML files for each group
+  const filePaths: string[] = [];
+  
+  for (const [groupName, questions] of Object.entries(groups)) {
+    const xml = generateXmlFromQuestions(questions);
+    const filePath = path.join(tempDir, `${baseFilename}_${groupName}.xml`);
+    writeFileSync(filePath, xml);
+    filePaths.push(filePath);
+  }
+  
+  try {
+    // Use system zip command to create archive
+    const fileNames = filePaths.map(p => path.basename(p));
+    const zipCommand = `cd "${tempDir}" && zip "${zipPath}" ${fileNames.join(' ')}`;
+    execSync(zipCommand);
+    
+    const zipBuffer = readFileSync(zipPath);
+    
+    // Clean up temporary files
+    filePaths.forEach(p => {
+      try { 
+        execSync(`rm "${p}"`); 
+      } catch {}
+    });
+    try { 
+      execSync(`rm "${zipPath}"`); 
+    } catch {}
+    
+    return zipBuffer;
+  } catch (error) {
+    console.error('Error creating ZIP archive:', error);
+    
+    // Fallback: return the first XML file if ZIP creation fails
+    if (filePaths.length > 0) {
+      const firstFile = readFileSync(filePaths[0]);
+      
+      // Clean up temporary files
+      filePaths.forEach(p => {
+        try { 
+          execSync(`rm "${p}"`); 
+        } catch {}
+      });
+      
+      return firstFile;
+    }
+    
+    return Buffer.from('');
+  }
 }
 
 function generateXmlFromQuestions(questions: any[]): string {
