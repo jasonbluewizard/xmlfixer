@@ -143,15 +143,39 @@ export class DuplicateDetector {
    * Check if two questions are exactly the same
    */
   private isExactMatch(q1: Question, q2: Question, ignoreWhitespace: boolean): boolean {
-    const normalize = (text: string) => {
-      return ignoreWhitespace ? text.replace(/\s+/g, ' ').trim().toLowerCase() : text;
+    const normalize = (text: any) => {
+      try {
+        if (text === null || text === undefined) return "";
+        if (typeof text === 'string') {
+          return ignoreWhitespace ? text.replace(/\s+/g, ' ').trim().toLowerCase() : text;
+        }
+        if (typeof text === 'number' || typeof text === 'boolean') {
+          const str = String(text);
+          return ignoreWhitespace ? str.replace(/\s+/g, ' ').trim().toLowerCase() : str;
+        }
+        if (typeof text === 'object') {
+          const str = JSON.stringify(text);
+          return ignoreWhitespace ? str.replace(/\s+/g, ' ').trim().toLowerCase() : str;
+        }
+        const str = String(text);
+        return ignoreWhitespace ? str.replace(/\s+/g, ' ').trim().toLowerCase() : str;
+      } catch (error) {
+        console.error('Error normalizing text:', text, 'type:', typeof text, 'error:', error);
+        return "";
+      }
+    };
+
+    const safeChoicesCompare = (choices1: any[], choices2: any[]) => {
+      const norm1 = choices1.map(c => normalize(c));
+      const norm2 = choices2.map(c => normalize(c));
+      return JSON.stringify(norm1) === JSON.stringify(norm2);
     };
 
     return (
       normalize(q1.questionText) === normalize(q2.questionText) &&
       normalize(q1.correctAnswer) === normalize(q2.correctAnswer) &&
       normalize(q1.explanation) === normalize(q2.explanation) &&
-      JSON.stringify(q1.choices.map(normalize)) === JSON.stringify(q2.choices.map(normalize))
+      safeChoicesCompare(q1.choices || [], q2.choices || [])
     );
   }
 
@@ -174,8 +198,8 @@ export class DuplicateDetector {
   /**
    * Calculate text similarity using simple string comparison
    */
-  private textSimilarity(text1: string, text2: string): number {
-    const normalize = (text: string) => text.toLowerCase().replace(/\s+/g, ' ').trim();
+  private textSimilarity(text1: any, text2: any): number {
+    const normalize = (text: any) => String(text || "").toLowerCase().replace(/\s+/g, ' ').trim();
     
     const norm1 = normalize(text1);
     const norm2 = normalize(text2);
@@ -200,7 +224,7 @@ export class DuplicateDetector {
   /**
    * Calculate similarity between two arrays of text
    */
-  private arrayTextSimilarity(arr1: string[], arr2: string[]): number {
+  private arrayTextSimilarity(arr1: any[], arr2: any[]): number {
     if (arr1.length !== arr2.length) return 0;
     
     const similarities = arr1.map((text1, i) => 

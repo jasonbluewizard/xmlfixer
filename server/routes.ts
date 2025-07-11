@@ -514,22 +514,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? parsedXml.questions.question 
           : [parsedXml.questions.question];
 
+        // Helper function to safely extract text from parsed XML nodes
+        const safeText = (value: any): string => {
+          if (typeof value === 'string') return value;
+          if (typeof value === 'number') return String(value);
+          if (value?.["#text"]) return String(value["#text"]);
+          if (value?.cdata) return String(value.cdata);
+          if (typeof value === 'object' && value !== null) {
+            return JSON.stringify(value);
+          }
+          return String(value || "");
+        };
+
         // Convert to Question objects for duplicate detection
         const questions = questionNodes.map((node: any, index: number) => ({
           id: index + 1,
-          xmlId: node["@_id"] || `question_${index}`,
-          questionText: node.questionText?.["#text"] || node.questionText || "",
-          correctAnswer: node.correctAnswer?.["#text"] || node.correctAnswer || "",
-          explanation: node.explanation?.["#text"] || node.explanation || "",
+          xmlId: safeText(node["@_id"]) || `question_${index}`,
+          questionText: safeText(node.questionText),
+          correctAnswer: safeText(node.correctAnswer),
+          explanation: safeText(node.explanation),
           choices: Array.isArray(node.choices?.choice) 
-            ? node.choices.choice.map((c: any) => c["#text"] || c || "")
-            : node.choices?.choice ? [node.choices.choice["#text"] || node.choices.choice] : [],
-          grade: parseInt(node.grade?.["#text"] || node.grade || "1"),
-          domain: node.domain?.["#text"] || node.domain || "",
-          standard: node.standard?.["#text"] || node.standard || "",
-          tier: parseInt(node.tier?.["#text"] || node.tier || "1"),
-          answerKey: node.answerKey?.["#text"] || node.answerKey || "",
-          theme: node.theme?.["#text"] || node.theme || "",
+            ? node.choices.choice.map((c: any) => safeText(c))
+            : node.choices?.choice ? [safeText(node.choices.choice)] : [],
+          grade: parseInt(safeText(node.grade)) || 1,
+          domain: safeText(node.domain),
+          standard: safeText(node.standard),
+          tier: parseInt(safeText(node.tier)) || 1,
+          answerKey: safeText(node.answerKey),
+          theme: safeText(node.theme),
           tokensUsed: 0,
           status: "completed",
           validationStatus: "pending",
