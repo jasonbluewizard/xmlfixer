@@ -11,7 +11,8 @@ import QuestionList from "@/components/question-list";
 import QuestionEditor from "@/components/question-editor";
 import ValidationPanel from "@/components/validation-panel";
 import AIVerificationPanel from "@/components/ai-verification-panel";
-import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo, Merge, Split } from "lucide-react";
+import DuplicateDetector from "@/components/duplicate-detector";
+import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo, Merge, Split, Copy } from "lucide-react";
 import { type Question } from "@shared/schema";
 import { type QuestionFilters } from "@/types/question";
 import { DOMAINS, GRADES } from "@/types/question";
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isMergeOpen, setIsMergeOpen] = useState(false);
   const [isSplitOpen, setIsSplitOpen] = useState(false);
+  const [isDuplicateDetectorOpen, setIsDuplicateDetectorOpen] = useState(false);
   const [exportFilters, setExportFilters] = useState<{ grade?: string; domain?: string }>({});
   const [mergeFiles, setMergeFiles] = useState<File[]>([]);
   const [splitOptions, setSplitOptions] = useState<{ type: 'grade' | 'theme'; filename: string }>({ type: 'grade', filename: 'questions' });
@@ -296,6 +298,21 @@ export default function Dashboard() {
                       </Button>
                     </div>
                   </div>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={isDuplicateDetectorOpen} onOpenChange={setIsDuplicateDetectorOpen}>
+                <DialogTrigger asChild>
+                  <Button size="sm" variant="outline">
+                    <Copy className="h-4 w-4 mr-1" />
+                    Remove Duplicates
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl">
+                  <DialogHeader>
+                    <DialogTitle>Duplicate Detection & Removal</DialogTitle>
+                  </DialogHeader>
+                  <DuplicateDetector onComplete={() => setIsDuplicateDetectorOpen(false)} />
                 </DialogContent>
               </Dialog>
 

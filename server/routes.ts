@@ -12,6 +12,7 @@ import { execSync } from "child_process";
 import { aiVerifier } from "./ai-verifier";
 import { mathValidator } from "./math-validator";
 import { validationEngine } from "./validation-rules";
+import { duplicateDetector } from "./duplicate-detector";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -401,6 +402,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Duplicate detection API
+  app.post("/api/duplicates/detect", async (req, res) => {
+    try {
+      const { questionIds, options } = req.body;
+      
+      if (!questionIds || !Array.isArray(questionIds)) {
+        return res.status(400).json({ message: "Question IDs array is required" });
+      }
+
+      // Fetch questions
+      const questions = [];
+      for (const id of questionIds) {
+        const question = await storage.getQuestion(id);
+        if (question) {
+          questions.push(question);
+        }
+      }
+
+      if (questions.length === 0) {
+        return res.status(404).json({ message: "No questions found" });
+      }
+
+      // Detect duplicates
+      const result = await duplicateDetector.detectDuplicates(questions, options);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error detecting duplicates:", error);
+      res.status(500).json({ message: "Failed to detect duplicates" });
+    }
+  });
+
+  // Remove duplicates from XML file
+  app.post("/api/duplicates/remove", async (req, res) => {
+    try {
+      const { xmlFileId, options } = req.body;
+      
+      if (!xmlFileId) {
+        return res.status(400).json({ message: "XML file ID is required" });
+      }
+
+      // Get XML file
+      const xmlFile = await storage.getXmlFile(xmlFileId);
+      if (!xmlFile) {
+        return res.status(404).json({ message: "XML file not found" });
+      }
+
+      // Parse XML and extract questions
+      const parser = new XMLParser({
+        ignoreAttributes: false,
+        attributeNamePrefix: "@_",
+        textNodeName: "#text",
+        parseNodeValue: true,
+        parseAttributeValue: true,
+        trimValues: true,
+        parseTrueNumberOnly: false,
+        alwaysCreateTextNode: true,
+        processEntities: true,
+        htmlEntities: true,
+        ignoreDeclaration: true,
+        ignorePiTags: true,
+        parseTagValue: false,
+        stopNodes: ["*.CDATA", "*.cdata"],
+        cdataPropName: "cdata"
+      });
+
+      const xmlContent = xmlFile.originalContent;
+      const parsedXml = parser.parse(xmlContent);
+      
+      if (!parsedXml.questions || !parsedXml.questions.question) {
+        return res.status(400).json({ message: "Invalid XML format" });
+      }
+
+      const questionNodes = Array.isArray(parsedXml.questions.question) 
+        ? parsedXml.questions.question 
+        : [parsedXml.questions.question];
+
+      // Convert to Question objects for duplicate detection
+      const questions = questionNodes.map((node: any, index: number) => ({
+        id: index + 1,
+        xmlId: node["@_id"] || `question_${index}`,
+        questionText: node.questionText?.["#text"] || node.questionText || "",
+        correctAnswer: node.correctAnswer?.["#text"] || node.correctAnswer || "",
+        explanation: node.explanation?.["#text"] || node.explanation || "",
+        choices: Array.isArray(node.choices?.choice) 
+          ? node.choices.choice.map((c: any) => c["#text"] || c || "")
+          : node.choices?.choice ? [node.choices.choice["#text"] || node.choices.choice] : [],
+        grade: parseInt(node.grade?.["#text"] || node.grade || "1"),
+        domain: node.domain?.["#text"] || node.domain || "",
+        standard: node.standard?.["#text"] || node.standard || "",
+        tier: parseInt(node.tier?.["#text"] || node.tier || "1"),
+        answerKey: node.answerKey?.["#text"] || node.answerKey || "",
+        theme: node.theme?.["#text"] || node.theme || "",
+        tokensUsed: 0,
+        status: "completed",
+        validationStatus: "pending",
+        validationErrors: [],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }));
+
+      // Detect duplicates
+      const duplicateResult = await duplicateDetector.detectDuplicates(questions, options);
+      
+      // Generate new XML with duplicates removed
+      const uniqueQuestions = duplicateResult.keptQuestions;
+      const newXmlContent = generateXmlFromQuestions(uniqueQuestions.map(q => ({
+        xmlId: q.xmlId,
+        grade: q.grade,
+        domain: q.domain,
+        standard: q.standard,
+        tier: q.tier,
+        questionText: q.questionText,
+        correctAnswer: q.correctAnswer,
+        answerKey: q.answerKey,
+        choices: q.choices,
+        explanation: q.explanation,
+        theme: q.theme,
+        tokensUsed: q.tokensUsed || 0,
+        status: q.status || "completed"
+      })));
+
+      // Create new XML file
+      const newFilename = xmlFile.filename.replace(/\.xml$/, '_no_duplicates.xml');
+      const newXmlFile = await storage.createXmlFile({
+        filename: newFilename,
+        originalContent: newXmlContent
+      });
+
+      res.json({
+        originalFile: xmlFile,
+        newFile: newXmlFile,
+        duplicateDetectionResult: duplicateResult,
+        removedCount: duplicateResult.totalDuplicates,
+        keptCount: uniqueQuestions.length
+      });
+    } catch (error) {
+      console.error("Error removing duplicates:", error);
+      res.status(500).json({ message: "Failed to remove duplicates" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -511,7 +654,7 @@ function generateXmlFromQuestions(questions: any[]): string {
     <correctAnswer><![CDATA[${q.correctAnswer}]]></correctAnswer>
     <answerKey>${q.answerKey}</answerKey>
     <choices>
-      ${q.choices.map((choice: string) => `<choice>${choice}</choice>`).join('\n      ')}
+      ${Array.isArray(q.choices) ? q.choices.map((choice: string) => `<choice>${choice}</choice>`).join('\n      ') : `<choice>${q.choices}</choice>`}
     </choices>
     <explanation><![CDATA[${q.explanation}]]></explanation>
     <theme>${q.theme}</theme>
