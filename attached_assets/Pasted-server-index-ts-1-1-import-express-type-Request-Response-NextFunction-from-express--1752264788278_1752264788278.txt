@@ -1,0 +1,93 @@
+server/index.ts
++1
+-1
+
+import express, { type Request, Response, NextFunction } from "express";
+import { createServer } from "http";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
+import { WebSocketManager } from "./websocket";
+import { spawn } from "child_process";
+import * as path from "path";
+import "./emergency-logging-suppression.js";
+import "./emergency-logging-suppression";
+
+// Enable fallback mode to bypass FastAPI connectivity issues
+process.env.USE_FALLBACK_GENERATION = 'true';
+process.env.SKIP_PYTHON_HEALTH_CHECK = 'true';
+console.log('🔄 Fallback mode enabled - bypassing FastAPI service requirements');
+
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
+
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+server/routes.ts
++8
+-8
+
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from "ws";
+import { storage } from "./storage";
+import { questionGenerationRequestSchema, batchGenerationRequestSchema, exportRequestSchema, type Question } from "@shared/schema";
+import { describeTheme, getThemeCode } from "./theme";
+import { QuestionPipeline } from "./question-pipeline";
+import { batchGenerator, setBatchGeneratorWebSocket, ServiceUnavailableError } from "./batch-generator";
+import { performanceMonitor } from "./performance-monitor";
+import { bulkDatabaseManager } from "./bulk-database-manager";
+import { questionLibrary } from "./question-library.js";
+import { nameTracker } from "./name-tracker.js";
+import { DIVERSE_NAMES } from "../shared/name-diversity.js";
+import { duplicateDetector } from "./duplicate-detector.js";
+import { qualityController } from "./quality-control.js";
+import { comprehensiveValidator } from "./comprehensive-validator.js";
+import { generationLogger } from "./generation-logger.js";
+import { ReclassifyService } from "./reclassify-service.js";
+import { questionLibrary } from "./question-library";
+import { nameTracker } from "./name-tracker";
+import { DIVERSE_NAMES } from "../shared/name-diversity";
+import { duplicateDetector } from "./duplicate-detector";
+import { qualityController } from "./quality-control";
+import { comprehensiveValidator } from "./comprehensive-validator";
+import { generationLogger } from "./generation-logger";
+import { ReclassifyService } from "./reclassify-service";
+import OpenAI from "openai";
+import multer from "multer";
+import { applyUnifiedFilters, convertLegacyFilters, isShortNumericQuestion } from "./unified-filtering";
+import { XMLParser } from "fast-xml-parser";
+import { generate_xml_for_questions, extract_question_data } from "./xml_builder";
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
+});
+
+// Configure XML parser
+const xmlParser = new XMLParser({
+  ignoreAttributes: false,
+  attributeNamePrefix: "@_",
+  textNodeName: "#text",
+  parseTagValue: true,
+  parseAttributeValue: true,
+  trimValues: true
+});
