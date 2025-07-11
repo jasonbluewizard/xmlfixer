@@ -261,91 +261,97 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="w-5 h-5 text-green-500" />
-              Detection Results
+              Duplicate Detection Results
             </CardTitle>
+            <CardDescription>
+              Processing completed successfully. Here's what was found and removed:
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             {/* Summary Stats */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">
+            <div className="grid grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-red-50 rounded-lg border">
+                <div className="text-3xl font-bold text-red-600">
                   {detectionResult.totalDuplicates}
                 </div>
-                <div className="text-sm text-gray-600">Duplicates Removed</div>
+                <div className="text-sm text-gray-600 font-medium">Duplicates Removed</div>
               </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">
+              <div className="text-center p-4 bg-green-50 rounded-lg border">
+                <div className="text-3xl font-bold text-green-600">
                   {detectionResult.uniqueQuestions}
                 </div>
-                <div className="text-sm text-gray-600">Unique Questions</div>
+                <div className="text-sm text-gray-600 font-medium">Unique Questions</div>
               </div>
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="text-center p-4 bg-blue-50 rounded-lg border">
+                <div className="text-3xl font-bold text-blue-600">
                   {detectionResult.duplicateGroups.length}
                 </div>
-                <div className="text-sm text-gray-600">Duplicate Groups</div>
+                <div className="text-sm text-gray-600 font-medium">Duplicate Groups</div>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg border">
+                <div className="text-3xl font-bold text-orange-600">
+                  {Math.round((detectionResult.totalDuplicates / (detectionResult.totalDuplicates + detectionResult.uniqueQuestions)) * 100)}%
+                </div>
+                <div className="text-sm text-gray-600 font-medium">Duplicate Rate</div>
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Duplicate Removal Progress</span>
-                <span>
-                  {detectionResult.uniqueQuestions} / {detectionResult.uniqueQuestions + detectionResult.totalDuplicates} questions kept
-                </span>
-              </div>
-              <Progress 
-                value={(detectionResult.uniqueQuestions / (detectionResult.uniqueQuestions + detectionResult.totalDuplicates)) * 100} 
-                className="h-2"
-              />
+            {/* Download Section */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold mb-2 flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                Download Cleaned File
+              </h3>
+              <p className="text-sm text-gray-600 mb-3">
+                A new XML file with duplicates removed has been created and is ready for download.
+              </p>
+              <Button 
+                onClick={() => {
+                  const selectedFileData = xmlFiles.find(f => f.id === selectedFile);
+                  if (selectedFileData) {
+                    const cleanedFilename = selectedFileData.filename.replace(/\.xml$/, '_no_duplicates.xml');
+                    window.open(`/api/xml/download/${cleanedFilename}`, '_blank');
+                  }
+                }}
+                className="w-full"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download Cleaned XML File
+              </Button>
             </div>
 
-            {/* Duplicate Groups */}
-            {detectionResult.duplicateGroups.length > 0 && (
-              <div className="space-y-3">
-                <Label>Duplicate Groups Found</Label>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {detectionResult.duplicateGroups.map((group, index) => (
-                    <div key={group.id} className="p-3 border rounded-lg">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-4 h-4 text-gray-500" />
-                          <span className="font-medium">Group {index + 1}</span>
-                          <Badge variant="outline" className={getSeverityColor(group.matchType)}>
-                            {getMatchTypeLabel(group.matchType)}
-                          </Badge>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {group.duplicateCount} duplicate(s)
+            {/* Detailed Results */}
+            <div className="space-y-4">
+              <h3 className="font-semibold">Duplicate Groups Found:</h3>
+              <div className="max-h-96 overflow-y-auto space-y-3">
+                {detectionResult.duplicateGroups.slice(0, 10).map((group, index) => (
+                  <div key={group.id} className="p-3 border rounded-lg bg-gray-50">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="font-medium text-sm">Group {index + 1}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 rounded text-xs text-white ${getSeverityColor(group.matchType)}`}>
+                          {getMatchTypeLabel(group.matchType)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {Math.round(group.similarityScore * 100)}% similar
                         </span>
                       </div>
-                      <div className="text-sm text-gray-600 truncate">
-                        {group.questions[0]?.questionText || 'No question text'}
-                      </div>
                     </div>
-                  ))}
-                </div>
+                    <div className="text-sm text-gray-600">
+                      <strong>{group.duplicateCount}</strong> duplicates found
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1 truncate">
+                      Sample: {group.questions[0]?.questionText?.substring(0, 100)}...
+                    </div>
+                  </div>
+                ))}
+                {detectionResult.duplicateGroups.length > 10 && (
+                  <div className="text-center py-2 text-sm text-gray-500">
+                    ... and {detectionResult.duplicateGroups.length - 10} more groups
+                  </div>
+                )}
               </div>
-            )}
-
-            {/* Success Message */}
-            {detectionResult.totalDuplicates > 0 ? (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  Successfully removed {detectionResult.totalDuplicates} duplicate questions. 
-                  A new XML file has been created with {detectionResult.uniqueQuestions} unique questions.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  No duplicates found! Your XML file already contains only unique questions.
-                </AlertDescription>
-              </Alert>
-            )}
+            </div>
           </CardContent>
         </Card>
       )}
