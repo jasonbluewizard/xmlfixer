@@ -10,6 +10,8 @@ import path from "path";
 import { tmpdir } from "os";
 import { execSync } from "child_process";
 import { aiVerifier } from "./ai-verifier";
+import { mathValidator } from "./math-validator";
+import { validationEngine } from "./validation-rules";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -350,6 +352,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error applying fixes:", error);
       res.status(500).json({ message: "Failed to apply fixes" });
+    }
+  });
+
+  // Enhanced SymPy validation endpoint
+  app.post("/api/ai/validate-sympy", async (req, res) => {
+    try {
+      const validationRequest = req.body;
+      
+      if (!validationRequest.questionText || !validationRequest.correctAnswer) {
+        return res.status(400).json({ message: "Question text and correct answer are required" });
+      }
+
+      // Create a temporary question object for validation
+      const tempQuestion = {
+        id: 0,
+        questionText: validationRequest.questionText,
+        correctAnswer: validationRequest.correctAnswer,
+        choices: validationRequest.choices || [],
+        explanation: validationRequest.explanation || '',
+        grade: validationRequest.grade || 1,
+        domain: validationRequest.domain || 'Number and Operations',
+        standard: '',
+        answerKey: 'A',
+        theme: '',
+        xmlId: ''
+      };
+
+      const mathValidation = await mathValidator.validateMathematically(tempQuestion);
+      const ruleValidation = await validationEngine.validateQuestion(tempQuestion);
+
+      const response = {
+        isValid: mathValidation.sympyValidated && ruleValidation.isValid,
+        errors: [
+          ...mathValidation.computationalErrors,
+          ...ruleValidation.errors.map(e => e.message)
+        ],
+        mathematicalAccuracy: mathValidation.sympyValidated,
+        gradeAppropriate: mathValidation.gradeAppropriate,
+        arithmeticConsistency: mathValidation.arithmeticConsistency,
+        confidenceScore: mathValidation.sympyValidated ? 0.95 : 0.3
+      };
+      
+      res.json(response);
+    } catch (error) {
+      console.error("Error in SymPy validation:", error);
+      res.status(500).json({ message: "SymPy validation failed" });
     }
   });
 

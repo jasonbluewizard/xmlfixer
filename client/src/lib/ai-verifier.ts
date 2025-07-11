@@ -10,6 +10,18 @@ export interface QuestionIssue {
   suggestedFix: string;
   explanation: string;
   confidence: number; // 0-1 scale
+  severity: 'critical' | 'major' | 'minor';
+  automaticFix: boolean;
+  validationMethod: 'ai' | 'sympy' | 'regex' | 'hybrid';
+  productionImpact: 'blocks_grading' | 'confuses_students' | 'minor_clarity';
+}
+
+export interface MathematicalValidation {
+  sympyValidated: boolean;
+  computationalErrors: string[];
+  arithmeticConsistency: boolean;
+  answerExplanationMatch: boolean;
+  gradeAppropriate: boolean;
 }
 
 export interface VerificationResult {
@@ -21,6 +33,7 @@ export interface VerificationResult {
     alignmentScore: number;
     suggestions: string[];
   };
+  mathematicalValidation: MathematicalValidation;
   summary: string;
 }
 

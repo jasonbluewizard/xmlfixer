@@ -215,6 +215,62 @@ export default function AIVerificationPanel({
                       </CardContent>
                     </Card>
 
+                    {/* Mathematical Validation */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5" />
+                          Mathematical Validation
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">SymPy Verified:</span>
+                            {verificationResult.mathematicalValidation?.sympyValidated ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Grade Appropriate:</span>
+                            {verificationResult.mathematicalValidation?.gradeAppropriate ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Arithmetic Consistent:</span>
+                            {verificationResult.mathematicalValidation?.arithmeticConsistency ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">Answer Match:</span>
+                            {verificationResult.mathematicalValidation?.answerExplanationMatch ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </div>
+                        </div>
+                        {verificationResult.mathematicalValidation?.computationalErrors?.length > 0 && (
+                          <div className="mt-4">
+                            <span className="text-sm font-medium text-red-600">Computational Errors:</span>
+                            <ul className="list-disc list-inside text-xs text-red-600 mt-1">
+                              {verificationResult.mathematicalValidation.computationalErrors.map((error, index) => (
+                                <li key={index}>{error}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
                     {/* Common Core Alignment */}
                     <Card>
                       <CardHeader className="pb-3">
@@ -281,9 +337,20 @@ export default function AIVerificationPanel({
                                         <Badge className={getCategoryColor(issue.category)}>
                                           {issue.category.replace('_', ' ')}
                                         </Badge>
+                                        <Badge variant="outline" className="text-xs">
+                                          {issue.validationMethod || 'ai'}
+                                        </Badge>
                                         <span className="text-sm text-gray-500">
                                           {Math.round(issue.confidence * 100)}% confidence
                                         </span>
+                                        {issue.severity && (
+                                          <Badge 
+                                            variant={issue.severity === 'critical' ? 'destructive' : 'secondary'}
+                                            className="text-xs"
+                                          >
+                                            {issue.severity}
+                                          </Badge>
+                                        )}
                                       </div>
                                       <p className="font-medium text-sm">{issue.description}</p>
                                       <div className="mt-2 text-xs text-gray-600">
