@@ -24,6 +24,13 @@ Preferred communication style: Simple, everyday language.
   - **Enhanced UI**: Mathematical validation display, severity indicators, validation method badges
   - **Grade-Level Enforcement**: Strict number limits per grade (Grade 1: ≤20, Grade 2: ≤100, etc.)
   - **Production Features**: Answer-explanation consistency, ellipsis detection, choice format validation
+- **NEW: Comprehensive Duplicate Detection System**
+  - **Multi-Algorithm Detection**: Exact matching, content similarity, and whitespace-aware comparison
+  - **Smart Question Analysis**: Compares question text, answers, choices, and explanations
+  - **User-Friendly Interface**: Dedicated tab with configurable detection options and similarity threshold
+  - **Batch Processing**: Handles large XML files (500+ questions) with timeout protection
+  - **Clean XML Generation**: Creates new XML files with duplicates removed, preserving structure
+  - **Fixed Large File Handling**: Resolved XML truncation issue for files over 10KB
 
 ### July 10, 2025
 - Successfully resolved XML upload functionality - file selection and upload working correctly

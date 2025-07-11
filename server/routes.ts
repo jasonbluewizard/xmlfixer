@@ -129,10 +129,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Parsed ${parsedQuestions.length} questions from XML`);
 
-      // Create XML file record
+      // Create XML file record  
       const xmlFile = await storage.createXmlFile({
         filename,
-        originalContent: xmlContent.substring(0, 10000), // Store only first 10KB for large files
+        originalContent: xmlContent, // Store complete XML content for duplicate detection
         questionCount: parsedQuestions.length,
       });
 
@@ -443,11 +443,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "XML file ID is required" });
       }
 
+      console.log(`Processing duplicate removal for XML file ID: ${xmlFileId}`);
+
       // Get XML file
       const xmlFile = await storage.getXmlFile(xmlFileId);
       if (!xmlFile) {
         return res.status(404).json({ message: "XML file not found" });
       }
+
+      console.log(`Found XML file: ${xmlFile.filename}, processing ${xmlFile.originalContent.length} characters for duplicates...`);
+
+      // For large files, set a timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Processing timeout after 30 seconds')), 30000);
+      });
 
       // Parse XML and extract questions
       const parser = new XMLParser({
@@ -469,42 +478,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const xmlContent = xmlFile.originalContent;
-      const parsedXml = parser.parse(xmlContent);
       
-      if (!parsedXml.questions || !parsedXml.questions.question) {
-        return res.status(400).json({ message: "Invalid XML format" });
+      // Validate XML content is complete
+      if (!xmlContent.trim().endsWith('</questions>')) {
+        return res.status(400).json({ 
+          message: "Incomplete XML content - file appears to be truncated. Please re-upload the XML file." 
+        });
       }
+      
+      // Process with timeout protection
+      const processPromise = (async () => {
+        const parsedXml = parser.parse(xmlContent);
+        
+        if (!parsedXml.questions || !parsedXml.questions.question) {
+          throw new Error("Invalid XML format");
+        }
 
-      const questionNodes = Array.isArray(parsedXml.questions.question) 
-        ? parsedXml.questions.question 
-        : [parsedXml.questions.question];
+        const questionNodes = Array.isArray(parsedXml.questions.question) 
+          ? parsedXml.questions.question 
+          : [parsedXml.questions.question];
 
-      // Convert to Question objects for duplicate detection
-      const questions = questionNodes.map((node: any, index: number) => ({
-        id: index + 1,
-        xmlId: node["@_id"] || `question_${index}`,
-        questionText: node.questionText?.["#text"] || node.questionText || "",
-        correctAnswer: node.correctAnswer?.["#text"] || node.correctAnswer || "",
-        explanation: node.explanation?.["#text"] || node.explanation || "",
-        choices: Array.isArray(node.choices?.choice) 
-          ? node.choices.choice.map((c: any) => c["#text"] || c || "")
-          : node.choices?.choice ? [node.choices.choice["#text"] || node.choices.choice] : [],
-        grade: parseInt(node.grade?.["#text"] || node.grade || "1"),
-        domain: node.domain?.["#text"] || node.domain || "",
-        standard: node.standard?.["#text"] || node.standard || "",
-        tier: parseInt(node.tier?.["#text"] || node.tier || "1"),
-        answerKey: node.answerKey?.["#text"] || node.answerKey || "",
-        theme: node.theme?.["#text"] || node.theme || "",
-        tokensUsed: 0,
-        status: "completed",
-        validationStatus: "pending",
-        validationErrors: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }));
+        // Convert to Question objects for duplicate detection
+        const questions = questionNodes.map((node: any, index: number) => ({
+          id: index + 1,
+          xmlId: node["@_id"] || `question_${index}`,
+          questionText: node.questionText?.["#text"] || node.questionText || "",
+          correctAnswer: node.correctAnswer?.["#text"] || node.correctAnswer || "",
+          explanation: node.explanation?.["#text"] || node.explanation || "",
+          choices: Array.isArray(node.choices?.choice) 
+            ? node.choices.choice.map((c: any) => c["#text"] || c || "")
+            : node.choices?.choice ? [node.choices.choice["#text"] || node.choices.choice] : [],
+          grade: parseInt(node.grade?.["#text"] || node.grade || "1"),
+          domain: node.domain?.["#text"] || node.domain || "",
+          standard: node.standard?.["#text"] || node.standard || "",
+          tier: parseInt(node.tier?.["#text"] || node.tier || "1"),
+          answerKey: node.answerKey?.["#text"] || node.answerKey || "",
+          theme: node.theme?.["#text"] || node.theme || "",
+          tokensUsed: 0,
+          status: "completed",
+          validationStatus: "pending",
+          validationErrors: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
 
-      // Detect duplicates
-      const duplicateResult = await duplicateDetector.detectDuplicates(questions, options);
+        console.log(`Processing ${questions.length} questions for duplicate detection...`);
+        
+        // Detect duplicates
+        const duplicateResult = await duplicateDetector.detectDuplicates(questions, options);
+        
+        console.log(`Found ${duplicateResult.totalDuplicates} duplicates in ${duplicateResult.duplicateGroups.length} groups`);
+        
+        return duplicateResult;
+      })();
+      
+      // Wait for processing with timeout
+      const duplicateResult = await Promise.race([processPromise, timeoutPromise]) as any;
       
       // Generate new XML with duplicates removed
       const uniqueQuestions = duplicateResult.keptQuestions;

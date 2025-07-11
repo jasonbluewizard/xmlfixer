@@ -76,9 +76,13 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
     onSuccess: (data) => {
       setDetectionResult(data.duplicateDetectionResult);
       queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
       if (onComplete) {
         onComplete(data.duplicateDetectionResult);
       }
+    },
+    onError: (error) => {
+      console.error('Error detecting duplicates:', error);
     }
   });
 
