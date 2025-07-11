@@ -111,6 +111,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete all questions (for clearing corrupted data)
+  app.delete("/api/questions/bulk", async (req, res) => {
+    try {
+      // Clear all questions from storage
+      const questions = await storage.getQuestions();
+      for (const question of questions) {
+        await storage.deleteQuestion(question.id);
+      }
+      
+      res.json({ message: `Deleted ${questions.length} questions`, count: questions.length });
+    } catch (error) {
+      console.error("Error bulk deleting questions:", error);
+      res.status(500).json({ message: "Failed to delete questions" });
+    }
+  });
+
   // Upload XML file
   app.post("/api/xml/upload", upload.single("file"), async (req, res) => {
     try {

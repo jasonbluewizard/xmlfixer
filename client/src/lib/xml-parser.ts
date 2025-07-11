@@ -9,7 +9,10 @@ export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
     parseAttributeValue: true,
     trimValues: true,
     parseTrueNumberOnly: false,
-    parseNodeValue: true
+    parseNodeValue: true,
+    cdataPropName: "__cdata", // Handle CDATA sections properly
+    parseCDATA: true,
+    alwaysCreateTextNode: true
   });
   
   const parsed = parser.parse(xmlContent) as any;
@@ -32,20 +35,31 @@ export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
     const choicesData = q.choices?.choice ?? [];
     const choicesArray = Array.isArray(choicesData) ? choicesData : [choicesData];
 
+    // Helper function to extract text content from CDATA or text nodes
+    const extractText = (node: any): string => {
+      if (typeof node === 'string') return node;
+      if (node?.__cdata) return node.__cdata;
+      if (node?.['#text']) return node['#text'];
+      if (typeof node === 'object' && node !== null) {
+        return String(node);
+      }
+      return String(node ?? "");
+    };
+
     return {
       xmlId: q["@_id"] ?? "",
       grade: parseInt(String(q.grade ?? "1")),
-      domain: q.domain ?? "",
-      standard: q.standard ?? "",
+      domain: extractText(q.domain),
+      standard: extractText(q.standard),
       tier: parseInt(String(q.tier ?? "1")),
-      questionText: String(q.questionText ?? ""),
-      correctAnswer: String(q.correctAnswer ?? ""),
-      answerKey: String(q.answerKey ?? "A"),
-      choices: choicesArray.map((c: any) => String(c ?? "")),
-      explanation: String(q.explanation ?? ""),
-      theme: q.theme ?? "",
+      questionText: extractText(q.questionText),
+      correctAnswer: extractText(q.correctAnswer),
+      answerKey: extractText(q.answerKey) || "A",
+      choices: choicesArray.map((c: any) => extractText(c)),
+      explanation: extractText(q.explanation),
+      theme: extractText(q.theme),
       tokensUsed: parseInt(String(q.tokensUsed ?? "0")),
-      status: q.status ?? "pending",
+      status: extractText(q.status) || "pending",
       validationStatus: "pending",
       validationErrors: [],
     };
