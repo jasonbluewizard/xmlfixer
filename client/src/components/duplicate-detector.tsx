@@ -262,6 +262,11 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
 
       {/* Detection Results */}
       {detectionResult && (
+        <div className="text-xs text-gray-500 mb-2">
+          Debug: Results found - {detectionResult.totalDuplicates} duplicates, {detectionResult.uniqueQuestions} unique
+        </div>
+      )}
+      {detectionResult && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -359,7 +364,9 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
                       <strong>{group.duplicateCount}</strong> duplicates found
                     </div>
                     <div className="text-xs text-gray-500 mt-1 truncate">
-                      Sample: {group.questions[0]?.questionText?.substring(0, 100)}...
+                      Sample: {typeof group.questions[0]?.questionText === 'string' 
+                        ? group.questions[0].questionText.substring(0, 100) 
+                        : 'Question text not available'}...
                     </div>
                   </div>
                 ))}
