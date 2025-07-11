@@ -62,16 +62,17 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
   // Fetch XML files
   const { data: xmlFiles = [] } = useQuery({
     queryKey: ['/api/xml/files'],
-    queryFn: () => apiRequest('/api/xml/files')
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/xml/files');
+      return response.json();
+    }
   });
 
   // Detect duplicates mutation
   const detectDuplicatesMutation = useMutation({
     mutationFn: async ({ xmlFileId, options }: { xmlFileId: number; options: DuplicateDetectionOptions }) => {
-      return apiRequest(`/api/duplicates/remove`, {
-        method: 'POST',
-        body: { xmlFileId, options }
-      });
+      const response = await apiRequest('POST', '/api/duplicates/remove', { xmlFileId, options });
+      return response.json();
     },
     onSuccess: (data) => {
       console.log('Duplicate detection successful:', data);
