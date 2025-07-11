@@ -9,6 +9,7 @@ import { writeFileSync, readFileSync } from "fs";
 import path from "path";
 import { tmpdir } from "os";
 import { execSync } from "child_process";
+import { aiVerifier } from "./ai-verifier";
 
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -275,6 +276,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error splitting XML file:", error);
       res.status(500).json({ message: "Failed to split XML file" });
+    }
+  });
+
+  // AI Verification endpoints
+  app.post("/api/ai/verify-question", async (req, res) => {
+    try {
+      const { questionId } = req.body;
+      
+      if (!questionId) {
+        return res.status(400).json({ message: "Question ID is required" });
+      }
+
+      const question = await storage.getQuestion(questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      const result = await aiVerifier.verifyQuestion(question);
+      res.json(result);
+    } catch (error) {
+      console.error("Error verifying question:", error);
+      res.status(500).json({ message: "Failed to verify question" });
+    }
+  });
+
+  app.post("/api/ai/verify-batch", async (req, res) => {
+    try {
+      const { questionIds } = req.body;
+      
+      if (!Array.isArray(questionIds) || questionIds.length === 0) {
+        return res.status(400).json({ message: "Question IDs array is required" });
+      }
+
+      if (questionIds.length > 20) {
+        return res.status(400).json({ message: "Batch verification limited to 20 questions" });
+      }
+
+      const questions = await Promise.all(
+        questionIds.map(id => storage.getQuestion(id))
+      );
+
+      const validQuestions = questions.filter(q => q !== undefined);
+      if (validQuestions.length === 0) {
+        return res.status(404).json({ message: "No valid questions found" });
+      }
+
+      const result = await aiVerifier.verifyBatch(validQuestions);
+      res.json(result);
+    } catch (error) {
+      console.error("Error verifying batch:", error);
+      res.status(500).json({ message: "Failed to verify batch" });
+    }
+  });
+
+  app.post("/api/ai/apply-fixes", async (req, res) => {
+    try {
+      const { questionId, fixes } = req.body;
+      
+      if (!questionId || !fixes) {
+        return res.status(400).json({ message: "Question ID and fixes are required" });
+      }
+
+      const question = await storage.getQuestion(questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      const updatedQuestion = await aiVerifier.applyFixes(question, { questionId, fixes });
+      const result = await storage.updateQuestion(questionId, updatedQuestion);
+      
+      res.json(result);
+    } catch (error) {
+      console.error("Error applying fixes:", error);
+      res.status(500).json({ message: "Failed to apply fixes" });
     }
   });
 

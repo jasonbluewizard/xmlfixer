@@ -10,6 +10,7 @@ import FileUpload from "@/components/file-upload";
 import QuestionList from "@/components/question-list";
 import QuestionEditor from "@/components/question-editor";
 import ValidationPanel from "@/components/validation-panel";
+import AIVerificationPanel from "@/components/ai-verification-panel";
 import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo, Merge, Split } from "lucide-react";
 import { type Question } from "@shared/schema";
 import { type QuestionFilters } from "@/types/question";
@@ -207,6 +208,19 @@ export default function Dashboard() {
                 <Redo className="h-4 w-4 mr-1" />
                 Redo
               </Button>
+              
+              <AIVerificationPanel
+                questions={questions}
+                selectedQuestion={selectedQuestion}
+                onQuestionUpdate={(id, updated) => {
+                  // Update the question in the list
+                  setSelectedQuestion(updated);
+                }}
+                onBatchUpdate={(updates) => {
+                  // Handle batch updates
+                  console.log('Batch updates:', updates);
+                }}
+              />
               
               <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
                 <DialogTrigger asChild>
