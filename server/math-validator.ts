@@ -95,118 +95,72 @@ export class MathValidator {
    * Use SymPy to validate mathematical expressions and computations
    */
   private async validateWithSympy(question: Question): Promise<{ isValid: boolean; errors: string[] }> {
-    const pythonScript = `
-import sympy as sp
-import re
-import json
-import sys
-
-def extract_numbers(text):
-    """Extract all numbers from text"""
-    return [float(match) for match in re.findall(r'\\d+(?:\\.\\d+)?', text)]
-
-def extract_expressions(text):
-    """Extract arithmetic expressions from text"""
-    patterns = [
-        r'(\\d+)\\s*\\+\\s*(\\d+)\\s*=\\s*(\\d+)',  # Addition
-        r'(\\d+)\\s*-\\s*(\\d+)\\s*=\\s*(\\d+)',   # Subtraction
-        r'(\\d+)\\s*\\*\\s*(\\d+)\\s*=\\s*(\\d+)',  # Multiplication
-        r'(\\d+)\\s*/\\s*(\\d+)\\s*=\\s*(\\d+)',   # Division
-        r'(\\d+)\\s*×\\s*(\\d+)\\s*=\\s*(\\d+)',   # Multiplication (×)
-        r'(\\d+)\\s*÷\\s*(\\d+)\\s*=\\s*(\\d+)',   # Division (÷)
-    ]
-    
-    expressions = []
-    for pattern in patterns:
-        matches = re.findall(pattern, text)
-        for match in matches:
-            expressions.append({
-                'operand1': float(match[0]),
-                'operand2': float(match[1]),
-                'result': float(match[2]),
-                'operation': pattern
-            })
-    
-    return expressions
-
-def validate_arithmetic_expressions(text):
-    """Validate arithmetic expressions using SymPy"""
-    errors = []
-    expressions = extract_expressions(text)
-    
-    for expr in expressions:
-        op1, op2, result = expr['operand1'], expr['operand2'], expr['result']
-        operation = expr['operation']
-        
-        try:
-            if '+' in operation:
-                expected = op1 + op2
-            elif '-' in operation:
-                expected = op1 - op2
-            elif '*' in operation or '×' in operation:
-                expected = op1 * op2
-            elif '/' in operation or '÷' in operation:
-                if op2 != 0:
-                    expected = op1 / op2
-                else:
-                    errors.append(f"Division by zero: {op1} ÷ {op2}")
-                    continue
-            else:
-                continue
-            
-            if abs(expected - result) > 0.001:  # Allow for small floating point errors
-                errors.append(f"Arithmetic error: {op1} {operation.split()[1] if len(operation.split()) > 1 else '+'} {op2} = {result}, but should be {expected}")
-        
-        except Exception as e:
-            errors.append(f"Evaluation error: {str(e)}")
-    
-    return errors
-
-def main():
-    question_data = json.loads(sys.argv[1])
-    
-    all_text = f"{question_data['questionText']} {question_data['explanation']} {' '.join(question_data['choices'])}"
-    
-    errors = validate_arithmetic_expressions(all_text)
-    
-    result = {
-        'isValid': len(errors) == 0,
-        'errors': errors
-    }
-    
-    print(json.dumps(result))
-
-if __name__ == "__main__":
-    main()
-`;
-
-    const tempFile = path.join(tmpdir(), `sympy_validation_${Date.now()}.py`);
-    
+    // Simplified JavaScript-based validation to avoid Python execution issues
     try {
-      writeFileSync(tempFile, pythonScript);
+      const errors: string[] = [];
+      const allText = `${question.questionText} ${question.explanation} ${question.choices.join(' ')}`;
       
-      const questionData = JSON.stringify({
-        questionText: question.questionText,
-        explanation: question.explanation,
-        choices: question.choices
-      });
+      // Extract arithmetic expressions - look for patterns like "2 + 3 = 6"
+      const patterns = [
+        { regex: /(\d+)\s*\+\s*(\d+)\s*=\s*(\d+)/g, op: '+' },
+        { regex: /(\d+)\s*-\s*(\d+)\s*=\s*(\d+)/g, op: '-' },
+        { regex: /(\d+)\s*\*\s*(\d+)\s*=\s*(\d+)/g, op: '*' },
+        { regex: /(\d+)\s*×\s*(\d+)\s*=\s*(\d+)/g, op: '×' },
+        { regex: /(\d+)\s*\/\s*(\d+)\s*=\s*(\d+)/g, op: '÷' },
+        { regex: /(\d+)\s*÷\s*(\d+)\s*=\s*(\d+)/g, op: '÷' }
+      ];
 
-      const output = execSync(`${this.pythonPath} "${tempFile}" '${questionData}'`, { 
-        encoding: 'utf8',
-        timeout: 10000 
-      });
+      for (const pattern of patterns) {
+        let match;
+        pattern.regex.lastIndex = 0; // Reset regex
+        
+        while ((match = pattern.regex.exec(allText)) !== null) {
+          const num1 = parseInt(match[1]);
+          const num2 = parseInt(match[2]);
+          const result = parseInt(match[3]);
+          let expected: number;
 
-      return JSON.parse(output.trim());
-    } catch (error) {
-      console.error('SymPy validation error:', error);
-      return { isValid: false, errors: [`SymPy execution failed: ${error.message}`] };
-    } finally {
-      try {
-        unlinkSync(tempFile);
-      } catch {
-        // Ignore cleanup errors
+          switch (pattern.op) {
+            case '+':
+              expected = num1 + num2;
+              break;
+            case '-':
+              expected = num1 - num2;
+              break;
+            case '*':
+            case '×':
+              expected = num1 * num2;
+              break;
+            case '÷':
+              if (num2 !== 0) {
+                expected = num1 / num2;
+              } else {
+                errors.push(`Division by zero: ${num1} ÷ ${num2}`);
+                continue;
+              }
+              break;
+            default:
+              continue;
+          }
+
+          if (Math.abs(expected - result) > 0.001) {
+            errors.push(`Math error found: ${num1} ${pattern.op} ${num2} shows ${result}, should be ${expected}`);
+          }
+        }
       }
+
+      return {
+        isValid: errors.length === 0,
+        errors
+      };
+    } catch (error) {
+      console.error('Math validation error:', error);
+      return {
+        isValid: false,
+        errors: [`Math validation failed: ${error.message}`]
+      };
     }
+
   }
 
   /**
