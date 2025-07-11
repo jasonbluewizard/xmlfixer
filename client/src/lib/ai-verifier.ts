@@ -80,11 +80,7 @@ export class AIQuestionVerifier {
    */
   async verifyQuestion(question: Question): Promise<VerificationResult> {
     try {
-      const response = await apiRequest("/api/ai/verify-question", {
-        method: "POST",
-        body: JSON.stringify({ questionId: question.id }),
-        headers: { "Content-Type": "application/json" }
-      });
+      const response = await apiRequest("POST", "/api/ai/verify-question", { questionId: question.id });
 
       if (!response.ok) {
         throw new Error(`Verification failed: ${response.statusText}`);
@@ -110,11 +106,7 @@ export class AIQuestionVerifier {
     }
 
     try {
-      const response = await apiRequest("/api/ai/verify-batch", {
-        method: "POST",
-        body: JSON.stringify({ questionIds: questions.map(q => q.id) }),
-        headers: { "Content-Type": "application/json" }
-      });
+      const response = await apiRequest("POST", "/api/ai/verify-batch", { questionIds: questions.map(q => q.id) });
 
       if (!response.ok) {
         throw new Error(`Batch verification failed: ${response.statusText}`);
@@ -132,11 +124,7 @@ export class AIQuestionVerifier {
    */
   async applyFixes(question: Question, fixes: FixApplication): Promise<Question> {
     try {
-      const response = await apiRequest("/api/ai/apply-fixes", {
-        method: "POST",
-        body: JSON.stringify({ questionId: question.id, fixes: fixes.fixes }),
-        headers: { "Content-Type": "application/json" }
-      });
+      const response = await apiRequest("POST", "/api/ai/apply-fixes", { questionId: question.id, fixes: fixes.fixes });
 
       if (!response.ok) {
         throw new Error(`Failed to apply fixes: ${response.statusText}`);
