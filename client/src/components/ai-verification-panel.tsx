@@ -263,7 +263,7 @@ export default function AIVerificationPanel({
                             <span className="text-sm font-medium text-red-600">Computational Errors:</span>
                             <ul className="list-disc list-inside text-xs text-red-600 mt-1">
                               {verificationResult.mathematicalValidation.computationalErrors.map((error, index) => (
-                                <li key={index}>{error}</li>
+                                <li key={`math_error_${index}`}>{error}</li>
                               ))}
                             </ul>
                           </div>
@@ -321,11 +321,11 @@ export default function AIVerificationPanel({
                         <CardContent>
                           <ScrollArea className="h-60">
                             <div className="space-y-4">
-                              {verificationResult.issues.map((issue) => (
-                                <div key={issue.id} className="border rounded-lg p-4 space-y-3">
+                              {verificationResult.issues.map((issue, index) => (
+                                <div key={`${issue.id}_${index}`} className="border rounded-lg p-4 space-y-3">
                                   <div className="flex items-start gap-2">
                                     <Checkbox
-                                      id={issue.id}
+                                      id={`${issue.id}_${index}`}
                                       checked={selectedFixes[issue.id] || false}
                                       onCheckedChange={(checked) => 
                                         setSelectedFixes(prev => ({ ...prev, [issue.id]: checked as boolean }))
@@ -360,11 +360,11 @@ export default function AIVerificationPanel({
                                       </div>
                                       {selectedFixes[issue.id] && (
                                         <div className="mt-3">
-                                          <Label htmlFor={`custom-${issue.id}`} className="text-xs">
+                                          <Label htmlFor={`custom-${issue.id}_${index}`} className="text-xs">
                                             Custom Fix (optional):
                                           </Label>
                                           <Textarea
-                                            id={`custom-${issue.id}`}
+                                            id={`custom-${issue.id}_${index}`}
                                             placeholder="Enter custom fix or leave empty to use suggested fix"
                                             value={customFixes[issue.id] || ''}
                                             onChange={(e) => setCustomFixes(prev => ({ ...prev, [issue.id]: e.target.value }))}

@@ -511,9 +511,39 @@ Provide individual analysis for each question plus batch-level insights about co
   }
 
   private formatBatchResult(questions: Question[], result: any): BatchVerificationResult {
-    const questionResults = questions.map((q, index) => {
+    const questionResults = questions.map((question, index) => {
       const questionResult = result.questions?.[index] || {};
-      return this.formatVerificationResult(q.id, questionResult);
+      return {
+        questionId: question.id,
+        overallScore: Math.max(0, Math.min(100, questionResult.overallScore || 0)),
+        issues: (questionResult.issues || []).map((issue: any, issueIndex: number) => ({
+          id: issue.id || `batch_issue_${index}_${issueIndex}`,
+          type: issue.type || 'warning',
+          category: issue.category || 'clarity',
+          description: issue.description || '',
+          currentValue: issue.currentValue || '',
+          suggestedFix: issue.suggestedFix || '',
+          explanation: issue.explanation || '',
+          confidence: Math.max(0, Math.min(1, issue.confidence || 0.5)),
+          severity: issue.severity || 'minor',
+          automaticFix: issue.automaticFix || false,
+          validationMethod: issue.validationMethod || 'ai',
+          productionImpact: issue.productionImpact || 'minor_clarity'
+        })),
+        commonCoreAlignment: {
+          standard: questionResult.commonCoreAlignment?.standard || '',
+          alignmentScore: Math.max(0, Math.min(100, questionResult.commonCoreAlignment?.alignmentScore || 0)),
+          suggestions: questionResult.commonCoreAlignment?.suggestions || []
+        },
+        mathematicalValidation: questionResult.mathematicalValidation || {
+          sympyValidated: false,
+          computationalErrors: ['Validation unavailable'],
+          arithmeticConsistency: false,
+          answerExplanationMatch: false,
+          gradeAppropriate: false
+        },
+        summary: questionResult.summary || 'Analysis completed'
+      };
     });
 
     return {
