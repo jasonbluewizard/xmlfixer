@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useQuestions } from "@/hooks/use-questions";
+import { useState, useMemo, useEffect } from "react";
+import { useQuestions, useBatchUpdateQuestions } from "@/hooks/use-questions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -7,8 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, ChevronLeft, ChevronRight, ArrowRight, CheckCircle, AlertTriangle, XCircle, Clock } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight, ArrowRight, CheckCircle, AlertTriangle, XCircle, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { validateQuestion } from "@/lib/validators";
 import { type Question } from "@shared/schema";
 import { type QuestionFilters } from "@/types/question";
 import { DOMAINS, GRADES, STATUS_OPTIONS } from "@/types/question";
@@ -28,9 +29,11 @@ export default function QuestionList({
 }: QuestionListProps) {
   const [jumpToNumber, setJumpToNumber] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [isValidating, setIsValidating] = useState(false);
   const questionsPerPage = 20;
   
   const { data: questions = [], isLoading, isError } = useQuestions(filters);
+  const batchUpdateQuestions = useBatchUpdateQuestions();
 
   const paginatedQuestions = useMemo(() => {
     const startIndex = (currentPage - 1) * questionsPerPage;
@@ -39,6 +42,62 @@ export default function QuestionList({
   }, [questions, currentPage, questionsPerPage]);
 
   const totalPages = Math.ceil(questions.length / questionsPerPage);
+
+  // Auto-validate questions when page changes (but only if user wants it)
+  useEffect(() => {
+    // Auto-validation disabled for now - user can manually trigger it
+    // if (paginatedQuestions.length > 0 && !isLoading) {
+    //   autoValidateCurrentPage();
+    // }
+  }, [currentPage, paginatedQuestions, isLoading]);
+
+  const autoValidateCurrentPage = async () => {
+    if (paginatedQuestions.length === 0) return;
+    
+    setIsValidating(true);
+    
+    try {
+      // Only validate questions that haven't been validated yet
+      const questionsToValidate = paginatedQuestions.filter(
+        question => !question.validationStatus || question.validationStatus === 'pending'
+      );
+
+      if (questionsToValidate.length === 0) {
+        setIsValidating(false);
+        return;
+      }
+
+      const validationUpdates = questionsToValidate.map(question => {
+        const validationResult = validateQuestion(question);
+        let status = 'valid';
+        
+        if (validationResult.errors.length > 0) {
+          status = 'error';
+        } else if (validationResult.warnings.length > 0) {
+          status = 'warning';
+        }
+        
+        return {
+          id: question.id,
+          question: {
+            validationStatus: status,
+            validationErrors: [...validationResult.errors, ...validationResult.warnings]
+          }
+        };
+      });
+
+      if (validationUpdates.length > 0) {
+        console.log(`Validating ${validationUpdates.length} questions on page ${currentPage}`);
+        await batchUpdateQuestions.mutateAsync(validationUpdates);
+        console.log('Validation completed successfully');
+      }
+    } catch (error) {
+      console.error('Auto-validation failed:', error);
+      // Don't show error toast for auto-validation to avoid spamming user
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const handleJumpToQuestion = () => {
     const questionNumber = parseInt(jumpToNumber);
@@ -162,7 +221,7 @@ export default function QuestionList({
             </Select>
           </div>
           
-          {/* Quick navigation */}
+          {/* Quick navigation and validation */}
           <div className="flex items-center space-x-2">
             <Input
               type="number"
@@ -178,7 +237,20 @@ export default function QuestionList({
             >
               <ArrowRight className="h-4 w-4" />
             </Button>
-            <div className="flex-1 text-right">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={autoValidateCurrentPage}
+              disabled={isValidating}
+              title="Validate current page"
+            >
+              {isValidating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4" />
+              )}
+            </Button>
+            <div className="flex-1 text-right flex items-center justify-end space-x-2">
               <span className="text-sm text-slate-500">
                 {questions.length > 0 ? (
                   <>
@@ -190,6 +262,12 @@ export default function QuestionList({
                   "No questions"
                 )}
               </span>
+              {isValidating && (
+                <div className="flex items-center space-x-1">
+                  <Loader2 className="h-3 w-3 animate-spin text-blue-500" />
+                  <span className="text-xs text-blue-500">Validating...</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
