@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { 
@@ -17,7 +18,8 @@ import {
   Download, 
   FileText, 
   Trash2, 
-  Users 
+  Users,
+  HelpCircle
 } from 'lucide-react';
 
 interface DuplicateGroup {
@@ -182,62 +184,100 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
           <div className="space-y-4">
             <Label>Detection Options</Label>
             
-            <div className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="exact-match"
-                  checked={detectionOptions.exactMatch}
-                  onCheckedChange={(checked) => 
-                    setDetectionOptions(prev => ({ ...prev, exactMatch: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="exact-match" className="text-sm">
-                  Exact Match Detection
-                </Label>
-              </div>
+            <TooltipProvider>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="exact-match"
+                    checked={detectionOptions.exactMatch}
+                    onCheckedChange={(checked) => 
+                      setDetectionOptions(prev => ({ ...prev, exactMatch: checked as boolean }))
+                    }
+                  />
+                  <Label htmlFor="exact-match" className="text-sm flex items-center gap-1">
+                    Exact Match Detection
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p>Finds questions that are identical in all aspects: question text, answers, choices, and explanations must match exactly.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="content-similarity"
-                  checked={detectionOptions.contentSimilarity}
-                  onCheckedChange={(checked) => 
-                    setDetectionOptions(prev => ({ ...prev, contentSimilarity: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="content-similarity" className="text-sm">
-                  Content Similarity Detection
-                </Label>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="content-similarity"
+                    checked={detectionOptions.contentSimilarity}
+                    onCheckedChange={(checked) => 
+                      setDetectionOptions(prev => ({ ...prev, contentSimilarity: checked as boolean }))
+                    }
+                  />
+                  <Label htmlFor="content-similarity" className="text-sm flex items-center gap-1">
+                    Content Similarity Detection
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p>Finds questions with similar content even if wording differs slightly. Uses text analysis to detect questions that are essentially the same but may have minor variations.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox 
-                  id="ignore-whitespace"
-                  checked={detectionOptions.ignoreWhitespace}
-                  onCheckedChange={(checked) => 
-                    setDetectionOptions(prev => ({ ...prev, ignoreWhitespace: checked as boolean }))
-                  }
-                />
-                <Label htmlFor="ignore-whitespace" className="text-sm">
-                  Ignore Whitespace Differences
-                </Label>
-              </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="ignore-whitespace"
+                    checked={detectionOptions.ignoreWhitespace}
+                    onCheckedChange={(checked) => 
+                      setDetectionOptions(prev => ({ ...prev, ignoreWhitespace: checked as boolean }))
+                    }
+                  />
+                  <Label htmlFor="ignore-whitespace" className="text-sm flex items-center gap-1">
+                    Ignore Whitespace Differences
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p>Treats questions as identical even if they have different spacing, line breaks, or tabs. "Hello world" and "Hello    world" would be considered the same.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm">
-                  Similarity Threshold: {Math.round(detectionOptions.similarityThreshold * 100)}%
-                </Label>
-                <Slider
-                  value={[detectionOptions.similarityThreshold]}
-                  onValueChange={([value]) => 
-                    setDetectionOptions(prev => ({ ...prev, similarityThreshold: value }))
-                  }
-                  max={1}
-                  min={0.5}
-                  step={0.05}
-                  className="w-full"
-                />
+                <div className="space-y-2">
+                  <Label className="text-sm flex items-center gap-1">
+                    Similarity Threshold: {Math.round(detectionOptions.similarityThreshold * 100)}%
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3 h-3 text-gray-400 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="right" className="max-w-xs">
+                        <p>How similar questions must be to be considered duplicates. 90% means questions must be 90% similar to be flagged. Lower values find more potential duplicates but may include false positives.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </Label>
+                  <Slider
+                    value={[detectionOptions.similarityThreshold]}
+                    onValueChange={([value]) => 
+                      setDetectionOptions(prev => ({ ...prev, similarityThreshold: value }))
+                    }
+                    max={1}
+                    min={0.5}
+                    step={0.05}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>50% (More results)</span>
+                    <span>100% (Fewer results)</span>
+                  </div>
+                </div>
               </div>
-            </div>
+            </TooltipProvider>
           </div>
 
           {/* Action Button */}
