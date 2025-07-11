@@ -86,9 +86,10 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
             queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
             queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
           }, 100);
-          if (onComplete) {
-            onComplete(data.duplicateDetectionResult);
-          }
+          // Results are now displayed in the UI instead of closing the dialog
+          // if (onComplete) {
+          //   onComplete(data.duplicateDetectionResult);
+          // }
         } else {
           console.error('Invalid response format - missing duplicateDetectionResult:', data);
         }

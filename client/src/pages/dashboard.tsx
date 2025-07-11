@@ -312,7 +312,7 @@ export default function Dashboard() {
                   <DialogHeader>
                     <DialogTitle>Duplicate Detection & Removal</DialogTitle>
                   </DialogHeader>
-                  <DuplicateDetector onComplete={() => setIsDuplicateDetectorOpen(false)} />
+                  <DuplicateDetector />
                 </DialogContent>
               </Dialog>
 
