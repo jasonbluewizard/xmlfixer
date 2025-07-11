@@ -17,6 +17,11 @@ Preferred communication style: Simple, everyday language.
 - Implemented XML file splitting capability to separate large files by grade or theme
 - Enhanced backend API with merge/split endpoints and proper ZIP file generation
 - Disabled auto-validation by default to give users control over when validation runs
+- **FIXED: Duplicate Detection Results Display** - Resolved issue where results briefly flashed then disappeared
+  - **Persistent Results**: Fixed query invalidation timing to prevent component state reset
+  - **Response Format Fix**: Corrected frontend to match backend response structure
+  - **Enhanced UX**: Added "Clear Results" button for manual control and improved console logging
+  - **Verified Performance**: Successfully processes 500 questions, finds 303 duplicates in 68 groups within 583ms
 - **ENHANCED: Production-Grade AI Verification Module** - Multi-tier validation system
   - **SymPy Mathematical Validation**: Deterministic arithmetic verification catching 10.8% more errors
   - **Rule-Based Validation Engine**: 8 configurable validation rules with automatic issue detection

@@ -77,15 +77,20 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
     onSuccess: (data) => {
       console.log('Duplicate detection successful:', data);
       try {
-        if (data && data.duplicateDetectionResult) {
-          setDetectionResult(data.duplicateDetectionResult);
-          queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
+        // The backend returns the result directly, not nested in duplicateDetectionResult
+        if (data && (data.duplicateGroups || data.totalDuplicates !== undefined)) {
+          console.log('Setting detection result:', data);
+          setDetectionResult(data);
+          // Delay query invalidation to prevent state reset
+          setTimeout(() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
+          }, 100);
           if (onComplete) {
-            onComplete(data.duplicateDetectionResult);
+            onComplete(data);
           }
         } else {
-          console.error('Invalid response format - missing duplicateDetectionResult:', data);
+          console.error('Invalid response format:', data);
         }
       } catch (error) {
         console.error('Error processing duplicate detection response:', error);
@@ -259,13 +264,26 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
       {detectionResult && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-green-500" />
-              Duplicate Detection Results
-            </CardTitle>
-            <CardDescription>
-              Processing completed successfully. Here's what was found and removed:
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-500" />
+                  Duplicate Detection Results
+                </CardTitle>
+                <CardDescription>
+                  Processing completed successfully. Here's what was found and removed:
+                </CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setDetectionResult(null)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <Trash2 className="w-4 h-4 mr-1" />
+                Clear Results
+              </Button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Summary Stats */}
