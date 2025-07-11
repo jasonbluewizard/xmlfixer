@@ -1,21 +1,34 @@
 import { type InsertQuestion } from "@shared/schema";
 import { XMLParser } from "fast-xml-parser";
 
+// Pre-process XML to handle CDATA properly
+function preprocessXML(xmlContent: string): string {
+  // Replace CDATA sections with regular text content
+  return xmlContent.replace(/<!\[CDATA\[(.*?)\]\]>/gs, '$1');
+}
+
 export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
   console.log('Parsing XML content, length:', xmlContent.length);
+  
+  // Pre-process XML to handle CDATA sections
+  const processedXml = preprocessXML(xmlContent);
   
   const parser = new XMLParser({ 
     ignoreAttributes: false,
     parseAttributeValue: true,
     trimValues: true,
     parseTrueNumberOnly: false,
-    parseNodeValue: true,
-    cdataPropName: "__cdata", // Handle CDATA sections properly
-    parseCDATA: true,
-    alwaysCreateTextNode: true
+    parseNodeValue: false,
+    textNodeName: "#text",
+    processEntities: true,
+    htmlEntities: true,
+    ignoreDeclaration: true,
+    ignorePiTags: true,
+    parseTagValue: false,
+    alwaysCreateTextNode: false
   });
   
-  const parsed = parser.parse(xmlContent) as any;
+  const parsed = parser.parse(processedXml) as any;
   console.log('Parsed XML root keys:', Object.keys(parsed));
 
   const questionNodes = parsed?.questions?.question;
@@ -30,39 +43,67 @@ export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
   return nodesArray.map((q: any, index: number) => {
     if (index < 3) {
       console.log('Processing question', index, 'with id:', q["@_id"]);
+      console.log('Question text raw:', q.questionText);
     }
     
     const choicesData = q.choices?.choice ?? [];
     const choicesArray = Array.isArray(choicesData) ? choicesData : [choicesData];
 
-    // Helper function to extract text content from CDATA or text nodes
-    const extractText = (node: any): string => {
-      if (typeof node === 'string') return node;
-      if (node?.__cdata) return node.__cdata;
-      if (node?.['#text']) return node['#text'];
-      if (typeof node === 'object' && node !== null) {
-        return String(node);
+    // Force string conversion - absolutely no objects allowed
+    const forceString = (value: any): string => {
+      if (value === null || value === undefined) return "";
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number') return String(value);
+      if (typeof value === 'boolean') return String(value);
+      
+      // For objects, stringify them completely
+      if (typeof value === 'object') {
+        // Try to get meaningful text content
+        if (value['#text']) return String(value['#text']);
+        if (value.cdata) return String(value.cdata);
+        if (value.__cdata) return String(value.__cdata);
+        
+        // If it's a simple object with one text property, extract it
+        const keys = Object.keys(value);
+        if (keys.length === 1) {
+          const singleValue = value[keys[0]];
+          if (typeof singleValue === 'string') return singleValue;
+        }
+        
+        // Last resort - stringify the entire object
+        try {
+          return JSON.stringify(value);
+        } catch (e) {
+          return String(value);
+        }
       }
-      return String(node ?? "");
+      
+      return String(value);
     };
 
-    return {
-      xmlId: q["@_id"] ?? "",
-      grade: parseInt(String(q.grade ?? "1")),
-      domain: extractText(q.domain),
-      standard: extractText(q.standard),
-      tier: parseInt(String(q.tier ?? "1")),
-      questionText: extractText(q.questionText),
-      correctAnswer: extractText(q.correctAnswer),
-      answerKey: extractText(q.answerKey) || "A",
-      choices: choicesArray.map((c: any) => extractText(c)),
-      explanation: extractText(q.explanation),
-      theme: extractText(q.theme),
-      tokensUsed: parseInt(String(q.tokensUsed ?? "0")),
-      status: extractText(q.status) || "pending",
+    const result = {
+      xmlId: q["@_id"] || "",
+      grade: parseInt(forceString(q.grade)) || 1,
+      domain: forceString(q.domain),
+      standard: forceString(q.standard),
+      tier: parseInt(forceString(q.tier)) || 1,
+      questionText: forceString(q.questionText),
+      correctAnswer: forceString(q.correctAnswer),
+      answerKey: forceString(q.answerKey) || "A",
+      choices: choicesArray.map((c: any) => forceString(c)),
+      explanation: forceString(q.explanation),
+      theme: forceString(q.theme),
+      tokensUsed: parseInt(forceString(q.tokensUsed)) || 0,
+      status: forceString(q.status) || "pending",
       validationStatus: "pending",
       validationErrors: [],
     };
+
+    if (index < 3) {
+      console.log('Processed question text:', result.questionText);
+    }
+
+    return result;
   });
 }
 
