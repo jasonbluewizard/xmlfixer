@@ -196,7 +196,7 @@ export class DuplicateDetector {
   }
 
   /**
-   * Calculate text similarity using simple string comparison
+   * Calculate text similarity using improved algorithm that reduces false positives
    */
   private textSimilarity(text1: any, text2: any): number {
     const normalize = (text: any) => String(text || "").toLowerCase().replace(/\s+/g, ' ').trim();
@@ -207,18 +207,69 @@ export class DuplicateDetector {
     if (norm1 === norm2) return 1.0;
     if (norm1.length === 0 || norm2.length === 0) return 0;
 
-    // Simple similarity based on common characters
-    const minLength = Math.min(norm1.length, norm2.length);
-    const maxLength = Math.max(norm1.length, norm2.length);
+    // Check for mathematical content patterns that should be treated as distinct
+    const mathPatterns = [
+      /\d+[\+\-\*\/]\d+/g,        // Simple arithmetic like 3+2, 5-4, etc.
+      /\d+\.\d+/g,                // Decimal numbers
+      /\d+\/\d+/g,                // Fractions
+      /\$\d+/g,                   // Currency
+      /\d+\s*(cups?|liters?|meters?|feet|inches?|pounds?|ounces?|gallons?|milliliters?)/gi // Units
+    ];
+
+    // Extract mathematical expressions from both texts
+    const extractMathContent = (text: string) => {
+      const matches = [];
+      for (const pattern of mathPatterns) {
+        const found = text.match(pattern);
+        if (found) matches.push(...found);
+      }
+      return matches;
+    };
+
+    const math1 = extractMathContent(norm1);
+    const math2 = extractMathContent(norm2);
+
+    // If both contain mathematical expressions, compare them specifically
+    if (math1.length > 0 && math2.length > 0) {
+      const mathSimilarity = this.calculateMathSimilarity(math1, math2);
+      if (mathSimilarity < 0.8) {
+        // If mathematical content is significantly different, reduce overall similarity
+        return mathSimilarity * 0.7;
+      }
+    }
+
+    // Use Jaccard similarity for better text comparison
+    const words1 = norm1.split(/\s+/);
+    const words2 = norm2.split(/\s+/);
     
-    let commonChars = 0;
-    for (let i = 0; i < minLength; i++) {
-      if (norm1[i] === norm2[i]) {
-        commonChars++;
+    const set1 = new Set(words1);
+    const set2 = new Set(words2);
+    
+    const intersection = new Set([...set1].filter(x => set2.has(x)));
+    const union = new Set([...set1, ...set2]);
+    
+    const jaccardSimilarity = intersection.size / union.size;
+    
+    // Combine with length-based similarity for better accuracy
+    const lengthSimilarity = Math.min(norm1.length, norm2.length) / Math.max(norm1.length, norm2.length);
+    
+    return (jaccardSimilarity * 0.7) + (lengthSimilarity * 0.3);
+  }
+
+  /**
+   * Calculate similarity between mathematical expressions
+   */
+  private calculateMathSimilarity(math1: string[], math2: string[]): number {
+    if (math1.length !== math2.length) return 0;
+    
+    let exactMatches = 0;
+    for (let i = 0; i < math1.length; i++) {
+      if (math1[i] === math2[i]) {
+        exactMatches++;
       }
     }
     
-    return commonChars / maxLength;
+    return exactMatches / math1.length;
   }
 
   /**

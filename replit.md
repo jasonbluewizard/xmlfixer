@@ -37,6 +37,11 @@ Preferred communication style: Simple, everyday language.
   - **Batch Processing**: Handles large XML files (500+ questions) with timeout protection
   - **Clean XML Generation**: Creates new XML files with duplicates removed, preserving structure
   - **Production Performance**: Successfully processes 500 questions in <500ms, finding 300+ duplicates
+  - **IMPROVED: Mathematical Content Detection**: Enhanced algorithm reduces false positives for math questions
+    - **Smart Pattern Recognition**: Detects arithmetic expressions, decimals, fractions, currency, and units
+    - **Contextual Similarity**: Questions like "3+2" vs "5+6" are now correctly identified as different
+    - **Jaccard Similarity**: Upgraded from character-based to word-based similarity for better accuracy
+    - **Mathematical Weighting**: Reduced similarity scores when mathematical content differs significantly
   - **FIXED: XML Parser Issues**: Resolved "[object Object]" display by implementing robust CDATA preprocessing
   - **FIXED: String Handling**: Enhanced type safety preventing crashes from mixed object/string XML content
   - **VERIFIED: Complete Pipeline**: End-to-end testing confirms duplicate detection works reliably

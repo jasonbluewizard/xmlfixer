@@ -55,7 +55,7 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
     exactMatch: true,
     contentSimilarity: true,
     ignoreWhitespace: true,
-    similarityThreshold: 0.9
+    similarityThreshold: 0.8  // Lowered default to account for improved algorithm
   });
   const [detectionResult, setDetectionResult] = useState<DuplicateDetectionResult | null>(null);
 
@@ -257,7 +257,7 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
                         <HelpCircle className="w-3 h-3 text-gray-400 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent side="right" className="max-w-xs">
-                        <p>How similar questions must be to be considered duplicates. 90% means questions must be 90% similar to be flagged. Lower values find more potential duplicates but may include false positives.</p>
+                        <p>How similar questions must be to be considered duplicates. 80% means questions must be 80% similar to be flagged. The algorithm is designed to avoid false positives with mathematical content like "3+2" vs "5+6".</p>
                       </TooltipContent>
                     </Tooltip>
                   </Label>
