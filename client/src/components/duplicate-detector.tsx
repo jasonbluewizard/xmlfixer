@@ -74,11 +74,16 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
       });
     },
     onSuccess: (data) => {
-      setDetectionResult(data.duplicateDetectionResult);
-      queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
-      if (onComplete) {
-        onComplete(data.duplicateDetectionResult);
+      console.log('Duplicate detection successful:', data);
+      if (data && data.duplicateDetectionResult) {
+        setDetectionResult(data.duplicateDetectionResult);
+        queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
+        queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
+        if (onComplete) {
+          onComplete(data.duplicateDetectionResult);
+        }
+      } else {
+        console.error('Invalid response format:', data);
       }
     },
     onError: (error) => {
