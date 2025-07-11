@@ -77,20 +77,20 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
     onSuccess: (data) => {
       console.log('Duplicate detection successful:', data);
       try {
-        // The backend returns the result directly, not nested in duplicateDetectionResult
-        if (data && (data.duplicateGroups || data.totalDuplicates !== undefined)) {
-          console.log('Setting detection result:', data);
-          setDetectionResult(data);
+        // The backend returns the result nested in duplicateDetectionResult
+        if (data && data.duplicateDetectionResult) {
+          console.log('Setting detection result:', data.duplicateDetectionResult);
+          setDetectionResult(data.duplicateDetectionResult);
           // Delay query invalidation to prevent state reset
           setTimeout(() => {
             queryClient.invalidateQueries({ queryKey: ['/api/xml/files'] });
             queryClient.invalidateQueries({ queryKey: ['/api/questions'] });
           }, 100);
           if (onComplete) {
-            onComplete(data);
+            onComplete(data.duplicateDetectionResult);
           }
         } else {
-          console.error('Invalid response format:', data);
+          console.error('Invalid response format - missing duplicateDetectionResult:', data);
         }
       } catch (error) {
         console.error('Error processing duplicate detection response:', error);
