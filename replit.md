@@ -21,7 +21,7 @@ Preferred communication style: Simple, everyday language.
   - **Root Cause**: Dialog auto-close callback was hiding results immediately after detection completed
   - **Response Format Fix**: Corrected frontend to match backend response structure (data.duplicateDetectionResult)
   - **Persistent Results**: Removed auto-close behavior so results stay visible in dialog for user review
-  - **Enhanced UX**: Added "Clear Results" button, helpful tooltips explaining detection options, and debug information for better user control
+  - **Enhanced UX**: Added "Clear Results" button, helpful tooltips explaining detection options, improved sample display, and debug information for better user control
   - **Verified Performance**: Successfully processes 500 questions, finds 317 duplicates in 66 groups within 447ms
 - **ENHANCED: Production-Grade AI Verification Module** - Multi-tier validation system
   - **SymPy Mathematical Validation**: Deterministic arithmetic verification catching 10.8% more errors

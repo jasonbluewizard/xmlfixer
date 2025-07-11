@@ -360,6 +360,23 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
               </div>
             </div>
 
+            {/* Debug Information */}
+            <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+              <h3 className="font-semibold mb-2 text-yellow-800">Debug Information</h3>
+              <div className="text-sm text-yellow-700 space-y-1">
+                <div>Total questions processed: {detectionResult.totalDuplicates + detectionResult.uniqueQuestions}</div>
+                <div>Sample question data check:</div>
+                {detectionResult.duplicateGroups[0]?.questions[0] && (
+                  <div className="ml-4 space-y-1">
+                    <div>- Question text: "{detectionResult.duplicateGroups[0].questions[0].questionText || 'EMPTY'}"</div>
+                    <div>- Explanation: "{detectionResult.duplicateGroups[0].questions[0].explanation?.substring(0, 50) || 'EMPTY'}..."</div>
+                    <div>- Choices: {JSON.stringify(detectionResult.duplicateGroups[0].questions[0].choices)}</div>
+                    <div>- Grade: {detectionResult.duplicateGroups[0].questions[0].grade}</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Download Section */}
             <div className="bg-gray-50 p-4 rounded-lg">
               <h3 className="font-semibold mb-2 flex items-center gap-2">
@@ -404,10 +421,19 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
                     <div className="text-sm text-gray-600">
                       <strong>{group.duplicateCount}</strong> duplicates found
                     </div>
-                    <div className="text-xs text-gray-500 mt-1 truncate">
-                      Sample: {typeof group.questions[0]?.questionText === 'string' 
-                        ? group.questions[0].questionText.substring(0, 100) 
-                        : 'Question text not available'}...
+                    <div className="text-xs text-gray-500 mt-1">
+                      <div className="font-medium mb-1">Sample Questions:</div>
+                      {group.questions.slice(0, 2).map((q, idx) => (
+                        <div key={idx} className="truncate mb-1">
+                          {idx + 1}. {q.questionText || q.explanation?.substring(0, 60) || 'Text not available'}
+                          {(q.questionText || q.explanation) && '...'}
+                        </div>
+                      ))}
+                      {group.questions.length > 2 && (
+                        <div className="text-gray-400">
+                          ...and {group.questions.length - 2} more similar questions
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

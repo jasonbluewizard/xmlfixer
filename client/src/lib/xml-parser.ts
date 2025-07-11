@@ -81,20 +81,30 @@ export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
       return String(value);
     };
 
+    // Handle different XML formats - check for both <stem> and <questionText>
+    const questionText = q.stem || q.questionText || "";
+    const correctAnswer = q.answer || q.correctAnswer || "";
+    
+    // Extract answer key from answer attributes if available
+    let answerKey = q.answerKey || q["@_answerKey"] || "";
+    if (q.answer && q.answer["@_key"]) {
+      answerKey = q.answer["@_key"];
+    }
+
     const result = {
       xmlId: q["@_id"] || "",
-      grade: parseInt(forceString(q.grade)) || 1,
-      domain: forceString(q.domain),
-      standard: forceString(q.standard),
-      tier: parseInt(forceString(q.tier)) || 1,
-      questionText: forceString(q.questionText),
-      correctAnswer: forceString(q.correctAnswer),
-      answerKey: forceString(q.answerKey) || "A",
+      grade: parseInt(forceString(q["@_grade"] || q.grade)) || 1,
+      domain: forceString(q["@_domain"] || q.domain),
+      standard: forceString(q["@_standard"] || q.standard),
+      tier: parseInt(forceString(q["@_tier"] || q.tier)) || 1,
+      questionText: forceString(questionText),
+      correctAnswer: forceString(correctAnswer),
+      answerKey: forceString(answerKey) || "A",
       choices: choicesArray.map((c: any) => forceString(c)),
       explanation: forceString(q.explanation),
       theme: forceString(q.theme),
       tokensUsed: parseInt(forceString(q.tokensUsed)) || 0,
-      status: forceString(q.status) || "pending",
+      status: forceString(q.status) || "completed",
       validationStatus: "pending",
       validationErrors: [],
     };
