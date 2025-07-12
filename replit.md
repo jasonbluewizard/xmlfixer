@@ -10,6 +10,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 12, 2025
+- **ADDED: AI-Powered Text Shortening Feature** - Smart question text optimization
+  - **Word Count Display**: Question Text field now shows word count with red highlighting when over 30 words
+  - **AI Shortening Button**: "Shorten Text" button appears when questions exceed 30 words
+  - **OpenAI Integration**: GPT-4o powered text shortening preserving mathematical accuracy and educational context
+  - **Smart Preservation**: Maintains core math concepts, numerical values, and grade-appropriate language
+  - **User-Friendly Interface**: Loading states and seamless auto-save integration
+  - **Production Ready**: Error handling, timeout management, and proper API validation
+
 ### July 11, 2025
 - Added automatic validation system for groups of 20 questions with manual trigger button
 - Implemented visual status indicators (green check, yellow warning, red error) for validation results

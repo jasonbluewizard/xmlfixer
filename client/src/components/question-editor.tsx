@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { useUpdateQuestion, useDeleteQuestion } from "@/hooks/use-questions";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { validateQuestion } from "@/lib/validators";
-import { ChevronDown, ChevronUp, Save, Play, CheckCircle, AlertTriangle, XCircle, ArrowLeft, ArrowRight, X, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Save, Play, CheckCircle, AlertTriangle, XCircle, ArrowLeft, ArrowRight, X, Trash2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Question } from "@shared/schema";
 import { DOMAINS, GRADES, STATUS_OPTIONS, ANSWER_KEYS } from "@/types/question";
@@ -55,6 +55,7 @@ export default function QuestionEditor({
   const [isValidationOpen, setIsValidationOpen] = useState(true);
   const [validationResult, setValidationResult] = useState<any>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isShorteningText, setIsShorteningText] = useState(false);
   
   const updateQuestion = useUpdateQuestion();
   const deleteQuestion = useDeleteQuestion();
@@ -134,6 +135,46 @@ export default function QuestionEditor({
       setValidationResult(result);
     }
   }, [question, formData, hasUnsavedChanges]);
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  };
+
+  // AI text shortening function
+  const handleShortenText = async () => {
+    const currentText = form.getValues("questionText");
+    if (!currentText || currentText.trim().length === 0) return;
+    
+    setIsShorteningText(true);
+    
+    try {
+      const response = await fetch('/api/ai/shorten-text', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text: currentText,
+          targetWords: 30,
+          preserveMath: true 
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to shorten text');
+      }
+      
+      const data = await response.json();
+      form.setValue("questionText", data.shortenedText);
+      setHasUnsavedChanges(true);
+    } catch (error) {
+      console.error('Error shortening text:', error);
+      // Could add a toast notification here
+    } finally {
+      setIsShorteningText(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!question) return;
@@ -426,19 +467,56 @@ export default function QuestionEditor({
               <FormField
                 control={form.control}
                 name="questionText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-sm font-semibold">Question Text</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        rows={4}
-                        className="resize-none"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) => {
+                  const wordCount = countWords(field.value || "");
+                  const isOverLimit = wordCount > 30;
+                  
+                  return (
+                    <FormItem>
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="text-sm font-semibold">
+                          Question Text - {" "}
+                          <span className={cn(
+                            "font-medium",
+                            isOverLimit ? "text-red-600" : "text-gray-600"
+                          )}>
+                            {wordCount} words
+                          </span>
+                        </FormLabel>
+                        {isOverLimit && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleShortenText}
+                            disabled={isShorteningText}
+                            className="h-8 px-3"
+                          >
+                            {isShorteningText ? (
+                              <>
+                                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2" />
+                                Shortening...
+                              </>
+                            ) : (
+                              <>
+                                <Zap className="h-3 w-3 mr-2" />
+                                Shorten Text
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          rows={4}
+                          className="resize-none"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
               />
               
               {/* Answer choices */}

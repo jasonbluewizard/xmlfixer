@@ -605,6 +605,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI text shortening endpoint
+  app.post("/api/ai/shorten-text", async (req, res) => {
+    try {
+      const { text, targetWords = 30, preserveMath = true } = req.body;
+      
+      if (!text || typeof text !== 'string') {
+        return res.status(400).json({ message: "Text is required" });
+      }
+
+      // Import OpenAI at runtime to avoid circular dependencies
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const systemPrompt = `You are an expert educational content editor. Your task is to shorten question text while preserving:
+1. The core mathematical concept and problem
+2. All numerical values and mathematical operations
+3. The educational context and grade-appropriate language
+4. The specific question being asked
+
+Guidelines:
+- Target ${targetWords} words or fewer
+- Remove unnecessary descriptive phrases and story elements
+- Keep essential context for understanding
+- Maintain mathematical accuracy
+- Preserve the question format
+- Use clear, concise language
+
+Respond with only the shortened text, no additional explanation.`;
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Shorten this question text to ${targetWords} words or fewer:\n\n${text}` }
+        ],
+        max_tokens: 200,
+        temperature: 0.3
+      });
+
+      const shortenedText = response.choices[0]?.message?.content?.trim();
+      
+      if (!shortenedText) {
+        throw new Error("Failed to generate shortened text");
+      }
+
+      res.json({ 
+        originalText: text,
+        shortenedText,
+        originalWordCount: text.trim().split(/\s+/).length,
+        newWordCount: shortenedText.trim().split(/\s+/).length
+      });
+    } catch (error) {
+      console.error("Error shortening text:", error);
+      res.status(500).json({ 
+        message: "Failed to shorten text", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
