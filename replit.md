@@ -15,7 +15,8 @@ Preferred communication style: Simple, everyday language.
   - **Word Count Display**: Question Text field now shows word count with red highlighting when over 30 words
   - **AI Shortening Button**: "Shorten Text" button appears when questions exceed 30 words
   - **OpenAI Integration**: GPT-4o powered text shortening preserving mathematical accuracy and educational context
-  - **Smart Preservation**: Maintains core math concepts, numerical values, and grade-appropriate language
+  - **Smart Preservation**: Maintains core math concepts, numerical values, grade-appropriate language, and adventure theme elements
+  - **Theme-Aware Shortening**: Preserves character names like "Blade the Fearless" and locations like "Underworld Dungeon" while removing redundant phrases
   - **User-Friendly Interface**: Loading states and seamless auto-save integration
   - **Production Ready**: Error handling, timeout management, and proper API validation
 

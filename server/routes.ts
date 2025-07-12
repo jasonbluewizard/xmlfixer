@@ -620,17 +620,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const systemPrompt = `You are an expert educational content editor. Your task is to shorten question text while preserving:
 1. The core mathematical concept and problem
-2. All numerical values and mathematical operations
+2. All numerical values and mathematical operations  
 3. The educational context and grade-appropriate language
-4. The specific question being asked
+4. Character names and fantasy/adventure theme elements (like "Blade the Fearless", "Underworld Dungeon", etc.)
+5. The specific question being asked
 
 Guidelines:
-- Target ${targetWords} words or fewer
-- Remove unnecessary descriptive phrases and story elements
-- Keep essential context for understanding
-- Maintain mathematical accuracy
-- Preserve the question format
-- Use clear, concise language
+- Target ${targetWords} words or fewer, but only reduce as much as needed
+- Keep character names and adventure theme intact when possible
+- Remove only truly redundant phrases and excessive descriptive details
+- Maintain the engaging narrative style that makes math fun
+- Preserve essential story context that helps students understand the problem
+- Keep mathematical accuracy as top priority
+
+Example: 
+- Instead of removing "Blade the Fearless" entirely, keep it but remove redundant phrases like "prepare to enter" or "they decide to"
+- Keep adventure locations like "Underworld Dungeon" but trim wordy setup
 
 Respond with only the shortened text, no additional explanation.`;
 
