@@ -670,6 +670,145 @@ Respond with only the shortened text, no additional explanation.`;
     }
   });
 
+  // AI batch text shortening endpoint
+  app.post("/api/ai/shorten-batch", async (req, res) => {
+    try {
+      const { questions, targetWords = 30, preserveMath = true } = req.body;
+      
+      if (!questions || !Array.isArray(questions)) {
+        return res.status(400).json({ message: "Questions array is required" });
+      }
+
+      if (questions.length === 0) {
+        return res.json({ results: [] });
+      }
+
+      // Import OpenAI at runtime to avoid circular dependencies
+      const OpenAI = (await import("openai")).default;
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const systemPrompt = `You are an expert educational content editor. Your task is to shorten multiple question texts while preserving:
+1. The core mathematical concept and problem for each question
+2. All numerical values and mathematical operations
+3. The educational context and grade-appropriate language
+4. Character names and fantasy/adventure theme elements (like "Blade the Fearless", "Underworld Dungeon", etc.)
+5. The specific question being asked
+
+Guidelines:
+- Target ${targetWords} words or fewer for each question, but only reduce as much as needed
+- Keep character names and adventure theme intact when possible
+- Remove only truly redundant phrases and excessive descriptive details
+- Maintain the engaging narrative style that makes math fun
+- Preserve essential story context that helps students understand the problem
+- Keep mathematical accuracy as top priority
+
+Process each question separately and respond with a JSON array where each object has:
+- "id": the question ID
+- "originalText": the original question text
+- "shortenedText": the shortened version
+- "originalWordCount": word count of original
+- "newWordCount": word count of shortened version
+
+Example format:
+[
+  {
+    "id": 1,
+    "originalText": "...",
+    "shortenedText": "...",
+    "originalWordCount": 45,
+    "newWordCount": 28
+  }
+]`;
+
+      // Prepare the batch prompt
+      const questionsText = questions.map((q, index) => 
+        `Question ${q.id}: ${q.text}`
+      ).join('\n\n');
+
+      const response = await openai.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Shorten these ${questions.length} question texts to ${targetWords} words or fewer each:\n\n${questionsText}` }
+        ],
+        max_tokens: questions.length * 100, // Scale tokens based on number of questions
+        temperature: 0.3,
+        response_format: { type: "json_object" }
+      });
+
+      let results;
+      try {
+        const responseContent = response.choices[0]?.message?.content?.trim();
+        if (!responseContent) {
+          throw new Error("Empty response from AI");
+        }
+        
+        const parsed = JSON.parse(responseContent);
+        // Handle both array format and object with array property
+        results = Array.isArray(parsed) ? parsed : (parsed.results || parsed.questions || []);
+      } catch (parseError) {
+        console.error("Failed to parse AI response:", parseError);
+        // Fallback: process questions individually
+        results = [];
+        for (const question of questions) {
+          try {
+            const individualPrompt = `You are an expert educational content editor. Your task is to shorten question text while preserving:
+1. The core mathematical concept and problem
+2. All numerical values and mathematical operations  
+3. The educational context and grade-appropriate language
+4. Character names and fantasy/adventure theme elements (like "Blade the Fearless", "Underworld Dungeon", etc.)
+5. The specific question being asked
+
+Guidelines:
+- Target ${targetWords} words or fewer, but only reduce as much as needed
+- Keep character names and adventure theme intact when possible
+- Remove only truly redundant phrases and excessive descriptive details
+- Maintain the engaging narrative style that makes math fun
+- Preserve essential story context that helps students understand the problem
+- Keep mathematical accuracy as top priority
+
+Respond with only the shortened text, no additional explanation.`;
+
+            const individualResponse = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                { role: "system", content: individualPrompt },
+                { role: "user", content: `Shorten this question text to ${targetWords} words or fewer:\n\n${question.text}` }
+              ],
+              max_tokens: 200,
+              temperature: 0.3
+            });
+
+            const shortenedText = individualResponse.choices[0]?.message?.content?.trim();
+            if (shortenedText) {
+              results.push({
+                id: question.id,
+                originalText: question.text,
+                shortenedText,
+                originalWordCount: question.text.trim().split(/\s+/).length,
+                newWordCount: shortenedText.trim().split(/\s+/).length
+              });
+            }
+          } catch (error) {
+            console.error(`Failed to process question ${question.id}:`, error);
+          }
+        }
+      }
+
+      res.json({ 
+        results,
+        totalProcessed: results.length,
+        totalRequested: questions.length
+      });
+    } catch (error) {
+      console.error("Error in batch shortening:", error);
+      res.status(500).json({ 
+        message: "Failed to shorten questions", 
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

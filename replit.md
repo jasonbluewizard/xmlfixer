@@ -19,6 +19,11 @@ Preferred communication style: Simple, everyday language.
   - **Theme-Aware Shortening**: Preserves character names like "Blade the Fearless" and locations like "Underworld Dungeon" while removing redundant phrases
   - **User-Friendly Interface**: Loading states and seamless auto-save integration
   - **Production Ready**: Error handling, timeout management, and proper API validation
+  - **Batch Processing**: Added "Shorten All" button for processing multiple questions at once
+    - Shows count badge of questions over 30 words
+    - Processes all long questions in a single batch API call
+    - Fallback to individual processing if batch fails
+    - Progress indicators and automatic refresh after completion
 
 ### July 11, 2025
 - Added automatic validation system for groups of 20 questions with manual trigger button

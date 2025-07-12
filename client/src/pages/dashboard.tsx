@@ -12,7 +12,7 @@ import QuestionEditor from "@/components/question-editor";
 import ValidationPanel from "@/components/validation-panel";
 import AIVerificationPanel from "@/components/ai-verification-panel";
 import DuplicateDetector from "@/components/duplicate-detector";
-import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo, Merge, Split, Copy } from "lucide-react";
+import { FileCode, Download, Upload, Settings, HelpCircle, CheckCircle, AlertTriangle, XCircle, Undo, Redo, Merge, Split, Copy, Zap } from "lucide-react";
 import { type Question } from "@shared/schema";
 import { type QuestionFilters } from "@/types/question";
 import { DOMAINS, GRADES } from "@/types/question";
@@ -28,6 +28,7 @@ export default function Dashboard() {
   const [exportFilters, setExportFilters] = useState<{ grade?: string; domain?: string }>({});
   const [mergeFiles, setMergeFiles] = useState<File[]>([]);
   const [splitOptions, setSplitOptions] = useState<{ type: 'grade' | 'theme'; filename: string }>({ type: 'grade', filename: 'questions' });
+  const [isShorteningAll, setIsShorteningAll] = useState(false);
   
   const { data: questions = [], isLoading } = useQuestions(filters);
   
@@ -85,6 +86,71 @@ export default function Dashboard() {
   const handlePrevious = () => {
     if (hasPrevious) {
       setSelectedQuestion(questions[selectedIndex - 1]);
+    }
+  };
+
+  // Helper function to count words
+  const countWords = (text: string): number => {
+    return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+  };
+
+  // Get questions that are over 30 words
+  const questionsOverLimit = questions.filter(q => countWords(q.questionText) > 30);
+
+  // Batch shorten all questions over 30 words
+  const handleShortenAll = async () => {
+    if (questionsOverLimit.length === 0) return;
+    
+    setIsShorteningAll(true);
+    
+    try {
+      const questionsToShorten = questionsOverLimit.map(q => ({
+        id: q.id,
+        text: q.questionText
+      }));
+
+      const response = await fetch('/api/ai/shorten-batch', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          questions: questionsToShorten,
+          targetWords: 30,
+          preserveMath: true 
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to shorten questions');
+      }
+      
+      const data = await response.json();
+      
+      // Apply the shortened texts by updating each question
+      for (const result of data.results) {
+        try {
+          await fetch(`/api/questions/${result.id}`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              questionText: result.shortenedText
+            }),
+          });
+        } catch (error) {
+          console.error(`Failed to update question ${result.id}:`, error);
+        }
+      }
+      
+      // Refresh the questions list
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Error shortening questions:', error);
+    } finally {
+      setIsShorteningAll(false);
     }
   };
 
@@ -315,6 +381,31 @@ export default function Dashboard() {
                   <DuplicateDetector />
                 </DialogContent>
               </Dialog>
+
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleShortenAll}
+                disabled={isShorteningAll || questionsOverLimit.length === 0}
+                className="relative"
+              >
+                {isShorteningAll ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-primary mr-2" />
+                    Shortening...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="h-4 w-4 mr-1" />
+                    Shorten All
+                    {questionsOverLimit.length > 0 && (
+                      <Badge variant="secondary" className="ml-2 h-5 text-xs">
+                        {questionsOverLimit.length}
+                      </Badge>
+                    )}
+                  </>
+                )}
+              </Button>
 
               <Dialog open={isMergeOpen} onOpenChange={setIsMergeOpen}>
                 <DialogTrigger asChild>
