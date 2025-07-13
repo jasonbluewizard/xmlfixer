@@ -73,10 +73,14 @@ export class MemStorage implements IStorage {
     const now = new Date();
     const question: Question = {
       ...insertQuestion,
+      status: insertQuestion.status ?? "pending",
+      validationStatus: insertQuestion.validationStatus ?? "pending",
+      validationErrors: (insertQuestion.validationErrors ?? []) as string[],
+      tokensUsed: insertQuestion.tokensUsed ?? 0,
       id,
       createdAt: now,
       updatedAt: now,
-    };
+    } as unknown as Question;
     this.questions.set(id, question);
     return question;
   }
@@ -84,12 +88,16 @@ export class MemStorage implements IStorage {
   async updateQuestion(id: number, updateQuestion: UpdateQuestion): Promise<Question | undefined> {
     const existing = this.questions.get(id);
     if (!existing) return undefined;
-    
+
     const updated: Question = {
       ...existing,
       ...updateQuestion,
+      status: updateQuestion.status ?? existing.status,
+      validationStatus: updateQuestion.validationStatus ?? existing.validationStatus,
+      validationErrors: (updateQuestion.validationErrors ?? existing.validationErrors) as string[],
+      tokensUsed: updateQuestion.tokensUsed ?? existing.tokensUsed,
       updatedAt: new Date(),
-    };
+    } as unknown as Question;
     this.questions.set(id, updated);
     return updated;
   }
