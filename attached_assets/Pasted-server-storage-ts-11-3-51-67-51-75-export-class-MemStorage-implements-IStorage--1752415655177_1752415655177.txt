@@ -1,0 +1,83 @@
+server/storage.ts
++11
+-3
+
+@@ -51,67 +51,75 @@ export class MemStorage implements IStorage {
+    if (filters?.search) {
+      const searchLower = filters.search.toLowerCase();
+      result = result.filter(q => 
+        q.questionText.toLowerCase().includes(searchLower) ||
+        q.theme.toLowerCase().includes(searchLower) ||
+        q.standard.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    return result.sort((a, b) => a.id - b.id);
+  }
+
+  async getQuestion(id: number): Promise<Question | undefined> {
+    return this.questions.get(id);
+  }
+
+  async getQuestionByXmlId(xmlId: string): Promise<Question | undefined> {
+    return Array.from(this.questions.values()).find(q => q.xmlId === xmlId);
+  }
+
+  async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
+    const id = this.currentQuestionId++;
+    const now = new Date();
+    const question: Question = {
+      ...insertQuestion,
+      status: insertQuestion.status ?? "pending",
+      validationStatus: insertQuestion.validationStatus ?? "pending",
+      validationErrors: (insertQuestion.validationErrors ?? []) as string[],
+      tokensUsed: insertQuestion.tokensUsed ?? 0,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    };
+    } as unknown as Question;
+    this.questions.set(id, question);
+    return question;
+  }
+
+  async updateQuestion(id: number, updateQuestion: UpdateQuestion): Promise<Question | undefined> {
+    const existing = this.questions.get(id);
+    if (!existing) return undefined;
+    
+
+    const updated: Question = {
+      ...existing,
+      ...updateQuestion,
+      status: updateQuestion.status ?? existing.status,
+      validationStatus: updateQuestion.validationStatus ?? existing.validationStatus,
+      validationErrors: (updateQuestion.validationErrors ?? existing.validationErrors) as string[],
+      tokensUsed: updateQuestion.tokensUsed ?? existing.tokensUsed,
+      updatedAt: new Date(),
+    };
+    } as unknown as Question;
+    this.questions.set(id, updated);
+    return updated;
+  }
+
+  async deleteQuestion(id: number): Promise<boolean> {
+    return this.questions.delete(id);
+  }
+
+  async getXmlFiles(): Promise<XmlFile[]> {
+    return Array.from(this.xmlFiles.values()).sort((a, b) => b.id - a.id);
+  }
+
+  async getXmlFile(id: number): Promise<XmlFile | undefined> {
+    return this.xmlFiles.get(id);
+  }
+
+  async createXmlFile(insertXmlFile: InsertXmlFile): Promise<XmlFile> {
+    const id = this.currentXmlFileId++;
+    const xmlFile: XmlFile = {
+      ...insertXmlFile,
+      id,
+      uploadedAt: new Date(),
+    };
+    this.xmlFiles.set(id, xmlFile);
+    return xmlFile;
