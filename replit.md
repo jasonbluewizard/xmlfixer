@@ -10,6 +10,17 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+### July 14, 2025
+- **ADDED: Intelligent Distractor Improvement Feature** - Mathematical error-pattern based answer choice generation
+  - **Python-Based Algorithm**: Advanced mathematical error pattern analysis for generating pedagogically meaningful wrong answers
+  - **Smart Error Patterns**: Generates distractors based on common mathematical mistakes (wrong operations, off-by-one errors, reversed calculations)
+  - **Grade-Aware Constraints**: Respects grade-level number limits (Grade 1: ≤20, Grade 2: ≤100, etc.)
+  - **Operation Detection**: Automatically detects addition, subtraction, multiplication, and division problems
+  - **Contextual Units**: Preserves units and context from original answers (e.g., "crystal vials", "feathers")
+  - **One-Click Integration**: "Improve Distractors" button in question editor with loading states
+  - **Production Ready**: Error handling, timeout management, and seamless UI integration
+  - **Educational Value**: Prioritizes mathematically meaningful distractors over random incorrect answers
+
 ### July 12, 2025
 - **ADDED: AI-Powered Text Shortening Feature** - Smart question text optimization
   - **Word Count Display**: Question Text field now shows word count with red highlighting when over 30 words

@@ -16,7 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { useUpdateQuestion, useDeleteQuestion } from "@/hooks/use-questions";
 import { useAutoSave } from "@/hooks/use-auto-save";
 import { validateQuestion } from "@/lib/validators";
-import { ChevronDown, ChevronUp, Save, Play, CheckCircle, AlertTriangle, XCircle, ArrowLeft, ArrowRight, X, Trash2, Zap } from "lucide-react";
+import { ChevronDown, ChevronUp, Save, Play, CheckCircle, AlertTriangle, XCircle, ArrowLeft, ArrowRight, X, Trash2, Zap, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type Question } from "@shared/schema";
 import { DOMAINS, GRADES, STATUS_OPTIONS, ANSWER_KEYS } from "@/types/question";
@@ -56,6 +56,7 @@ export default function QuestionEditor({
   const [validationResult, setValidationResult] = useState<any>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isShorteningText, setIsShorteningText] = useState(false);
+  const [isImprovingDistractors, setIsImprovingDistractors] = useState(false);
   
   const updateQuestion = useUpdateQuestion();
   const deleteQuestion = useDeleteQuestion();
@@ -173,6 +174,47 @@ export default function QuestionEditor({
       // Could add a toast notification here
     } finally {
       setIsShorteningText(false);
+    }
+  };
+
+  // AI distractor improvement function
+  const handleImproveDistractors = async () => {
+    if (!question) return;
+    
+    setIsImprovingDistractors(true);
+    
+    try {
+      const response = await fetch('/api/ai/improve-distractors', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          questionId: question.id
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to improve distractors');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Update form with improved choices
+        form.setValue("choices", data.improvedChoices);
+        form.setValue("answerKey", data.question.answerKey);
+        setHasUnsavedChanges(true);
+        
+        // Show a success message or toast
+        console.log('Distractors improved:', data.message);
+      } else {
+        console.error('Failed to improve distractors:', data.message);
+      }
+    } catch (error) {
+      console.error('Error improving distractors:', error);
+    } finally {
+      setIsImprovingDistractors(false);
     }
   };
 
@@ -523,14 +565,35 @@ export default function QuestionEditor({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-semibold">Answer Choices</Label>
-                  {validationResult?.warnings?.some((w: any) => w.field === 'choices') && (
-                    <div className="flex items-center space-x-2">
-                      <AlertTriangle className="h-4 w-4 text-warning" />
-                      <span className="text-xs text-warning">
-                        {validationResult.warnings.find((w: any) => w.field === 'choices')?.message}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleImproveDistractors}
+                      disabled={isImprovingDistractors || !formData.questionText || !formData.choices.some(Boolean)}
+                    >
+                      {isImprovingDistractors ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2" />
+                          Improving...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Improve Distractors
+                        </>
+                      )}
+                    </Button>
+                    {validationResult?.warnings?.some((w: any) => w.field === 'choices') && (
+                      <div className="flex items-center space-x-2">
+                        <AlertTriangle className="h-4 w-4 text-warning" />
+                        <span className="text-xs text-warning">
+                          {validationResult.warnings.find((w: any) => w.field === 'choices')?.message}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="space-y-3">

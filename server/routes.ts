@@ -608,6 +608,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Distractor improvement endpoint
+  app.post("/api/ai/improve-distractors", async (req, res) => {
+    try {
+      const { questionId } = req.body;
+      
+      if (!questionId) {
+        return res.status(400).json({ message: "Question ID is required" });
+      }
+
+      const question = await storage.getQuestion(questionId);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      // Prepare question data for Python script
+      const questionData = {
+        questionText: question.questionText,
+        correctAnswer: question.correctAnswer,
+        grade: question.grade,
+        choices: question.choices,
+        answerKey: question.answerKey
+      };
+
+      // Run Python distractor improver
+      const { execFile } = await import("child_process");
+      const { promisify } = await import("util");
+      const execFileAsync = promisify(execFile);
+
+      try {
+        const result = await execFileAsync('python3', ['server/distractor-improver.py'], {
+          input: JSON.stringify(questionData),
+          timeout: 30000, // 30 second timeout
+          encoding: 'utf8'
+        });
+
+        const improvement = JSON.parse(result.stdout);
+        
+        if (improvement.success) {
+          // Update the question with improved choices
+          const updatedQuestion = await storage.updateQuestion(questionId, {
+            choices: improvement.choices,
+            answerKey: improvement.answerKey
+          });
+          
+          res.json({
+            success: true,
+            question: updatedQuestion,
+            message: improvement.message,
+            originalChoices: question.choices,
+            improvedChoices: improvement.choices
+          });
+        } else {
+          res.status(400).json({
+            success: false,
+            message: improvement.message || "Failed to improve distractors"
+          });
+        }
+      } catch (error) {
+        console.error("Python script error:", error);
+        res.status(500).json({ 
+          message: "Failed to run distractor improvement", 
+          error: error.message 
+        });
+      }
+    } catch (error) {
+      console.error("Error improving distractors:", error);
+      res.status(500).json({ message: "Failed to improve distractors" });
+    }
+  });
+
   // AI text shortening endpoint
   app.post("/api/ai/shorten-text", async (req, res) => {
     try {
