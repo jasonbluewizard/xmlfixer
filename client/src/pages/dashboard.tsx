@@ -97,7 +97,7 @@ export default function Dashboard() {
   // Get questions that are over 30 words
   const questionsOverLimit = questions.filter(q => countWords(q.questionText) > 30);
 
-  // Batch shorten all questions over 30 words
+  // Batch shorten all questions over 30 words with chunked processing
   const handleShortenAll = async () => {
     if (questionsOverLimit.length === 0) return;
     
@@ -109,40 +109,56 @@ export default function Dashboard() {
         text: q.questionText
       }));
 
-      const response = await fetch('/api/ai/shorten-batch', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          questions: questionsToShorten,
-          targetWords: 30,
-          preserveMath: true 
-        }),
-      });
+      // Process in chunks of 10 to avoid payload size limits
+      const chunkSize = 10;
+      let totalProcessed = 0;
       
-      if (!response.ok) {
-        throw new Error('Failed to shorten questions');
-      }
-      
-      const data = await response.json();
-      
-      // Apply the shortened texts by updating each question
-      for (const result of data.results) {
+      for (let i = 0; i < questionsToShorten.length; i += chunkSize) {
+        const chunk = questionsToShorten.slice(i, i + chunkSize);
+        
         try {
-          await fetch(`/api/questions/${result.id}`, {
-            method: 'PUT',
+          const response = await fetch('/api/ai/shorten-batch', {
+            method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              questionText: result.shortenedText
+            body: JSON.stringify({ 
+              questions: chunk,
+              targetWords: 30,
+              preserveMath: true 
             }),
           });
+          
+          if (!response.ok) {
+            console.error(`Failed to process chunk ${i / chunkSize + 1}`);
+            continue;
+          }
+          
+          const data = await response.json();
+          
+          // Apply the shortened texts by updating each question
+          for (const result of data.results) {
+            try {
+              await fetch(`/api/questions/${result.id}`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  questionText: result.shortenedText
+                }),
+              });
+              totalProcessed++;
+            } catch (error) {
+              console.error(`Failed to update question ${result.id}:`, error);
+            }
+          }
         } catch (error) {
-          console.error(`Failed to update question ${result.id}:`, error);
+          console.error(`Error processing chunk ${i / chunkSize + 1}:`, error);
         }
       }
+      
+      console.log(`Successfully processed ${totalProcessed} out of ${questionsToShorten.length} questions`);
       
       // Refresh the questions list
       window.location.reload();
