@@ -229,7 +229,6 @@ def main():
             raise ValueError("No input data received")
         
         # Debug logging
-        import sys
         print(f"Received input: {input_data}", file=sys.stderr)
         
         question_data = json.loads(input_data)
