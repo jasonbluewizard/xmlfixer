@@ -89,7 +89,8 @@ export class AIQuestionVerifier {
       return await response.json();
     } catch (error) {
       console.error('Error verifying question:', error);
-      throw new Error(`Failed to verify question: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to verify question: ${message}`);
     }
   }
 
@@ -115,7 +116,8 @@ export class AIQuestionVerifier {
       return await response.json();
     } catch (error) {
       console.error('Error verifying batch:', error);
-      throw new Error(`Failed to verify batch: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to verify batch: ${message}`);
     }
   }
 
@@ -133,7 +135,8 @@ export class AIQuestionVerifier {
       return await response.json();
     } catch (error) {
       console.error('Error applying fixes:', error);
-      throw new Error(`Failed to apply fixes: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to apply fixes: ${message}`);
     }
   }
 }

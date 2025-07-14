@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema } from "@shared/schema";
+import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema, type Question } from "@shared/schema";
 import multer from "multer";
 import { z } from "zod";
 import { XMLParser } from "fast-xml-parser";
@@ -383,18 +383,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create a temporary question object for validation
-      const tempQuestion = {
+      const tempQuestion: Question = {
         id: 0,
-        questionText: validationRequest.questionText,
-        correctAnswer: validationRequest.correctAnswer,
-        choices: validationRequest.choices || [],
-        explanation: validationRequest.explanation || '',
+        xmlId: '',
         grade: validationRequest.grade || 1,
         domain: validationRequest.domain || 'Number and Operations',
         standard: '',
+        tier: 1,
+        questionText: validationRequest.questionText,
+        correctAnswer: validationRequest.correctAnswer,
         answerKey: 'A',
+        choices: validationRequest.choices || [],
+        explanation: validationRequest.explanation || '',
         theme: '',
-        xmlId: ''
+        tokensUsed: 0,
+        status: 'pending',
+        validationStatus: 'pending',
+        validationErrors: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       const mathValidation = await mathValidator.validateMathematically(tempQuestion);
@@ -480,16 +487,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ignoreAttributes: false,
         attributeNamePrefix: "@_",
         textNodeName: "#text",
-        parseNodeValue: true,
+        parseTagValue: true,
         parseAttributeValue: true,
         trimValues: true,
-        parseTrueNumberOnly: false,
         alwaysCreateTextNode: true,
         processEntities: true,
         htmlEntities: true,
         ignoreDeclaration: true,
         ignorePiTags: true,
-        parseTagValue: false,
         stopNodes: ["*.CDATA", "*.cdata"],
         cdataPropName: "cdata"
       });
@@ -566,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate new XML with duplicates removed
       const uniqueQuestions = duplicateResult.keptQuestions;
-      const newXmlContent = generateXmlFromQuestions(uniqueQuestions.map(q => ({
+      const newXmlContent = generateXmlFromQuestions(uniqueQuestions.map((q: any) => ({
         xmlId: q.xmlId,
         grade: q.grade,
         domain: q.domain,
@@ -586,7 +591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newFilename = xmlFile.filename.replace(/\.xml$/, '_no_duplicates.xml');
       const newXmlFile = await storage.createXmlFile({
         filename: newFilename,
-        originalContent: newXmlContent
+        originalContent: newXmlContent,
+        questionCount: uniqueQuestions.length
       });
 
       res.json({
@@ -811,12 +817,11 @@ Respond with only the shortened text, no additional explanation.`;
 }
 
 function parseXmlQuestions(xmlContent: string): any[] {
-  const parser = new XMLParser({ 
+  const parser = new XMLParser({
     ignoreAttributes: false,
     parseAttributeValue: true,
     trimValues: true,
-    parseTrueNumberOnly: false,
-    parseNodeValue: true
+    parseTagValue: true
   });
   
   const parsed = parser.parse(xmlContent) as any;

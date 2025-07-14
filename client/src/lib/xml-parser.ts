@@ -17,14 +17,12 @@ export function parseXmlQuestions(xmlContent: string): InsertQuestion[] {
     ignoreAttributes: false,
     parseAttributeValue: true,
     trimValues: true,
-    parseTrueNumberOnly: false,
-    parseNodeValue: false,
+    parseTagValue: false,
     textNodeName: "#text",
     processEntities: true,
     htmlEntities: true,
     ignoreDeclaration: true,
     ignorePiTags: true,
-    parseTagValue: false,
     alwaysCreateTextNode: false
   });
   
