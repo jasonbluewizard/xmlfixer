@@ -203,8 +203,8 @@ export default function Dashboard() {
     
     try {
       const formData = new FormData();
-      mergeFiles.forEach((file, index) => {
-        formData.append(`file${index}`, file);
+      mergeFiles.forEach((file) => {
+        formData.append('file', file);
       });
       
       const response = await fetch('/api/xml/merge', {
