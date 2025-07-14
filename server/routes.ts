@@ -726,15 +726,20 @@ Example format:
       // Process questions individually for more reliable results
       const results = [];
       
+      console.log(`Processing ${questions.length} questions for shortening to ${targetWords} words...`);
+      
       for (const question of questions) {
         try {
-          const wordCount = question.text.trim().split(/\s+/).length;
+          const wordCount = question.text.trim().split(/\s+/).filter(word => word.length > 0).length;
+          console.log(`Question ${question.id}: "${question.text.substring(0, 100)}..." has ${wordCount} words`);
           
           // Skip if already under target words
           if (wordCount <= targetWords) {
             console.log(`Question ${question.id} already under ${targetWords} words (${wordCount} words), skipping`);
             continue;
           }
+          
+          console.log(`Processing question ${question.id} (${wordCount} words)...`);
 
           const individualPrompt = `You are an expert educational content editor. Your task is to shorten question text while preserving:
 1. The core mathematical concept and problem
