@@ -811,7 +811,13 @@ function parseXmlQuestions(xmlContent: string): any[] {
     ignoreAttributes: false,
     parseAttributeValue: true,
     trimValues: true,
-    parseTagValue: true
+    parseTagValue: false,
+    textNodeName: "#text",
+    processEntities: true,
+    htmlEntities: true,
+    ignoreDeclaration: true,
+    ignorePiTags: true,
+    alwaysCreateTextNode: false
   });
   
   const parsed = parser.parse(xmlContent) as any;
@@ -826,19 +832,55 @@ function parseXmlQuestions(xmlContent: string): any[] {
     const choicesData = q.choices?.choice ?? [];
     const choicesArray = Array.isArray(choicesData) ? choicesData : [choicesData];
 
+    // Handle different XML formats - check for both <stem> and <questionText>
+    const questionText = q.stem || q.questionText || "";
+    const correctAnswer = q.answer || q.correctAnswer || "";
+    
+    // Extract answer key from answer attributes if available  
+    let answerKey = q.answerKey || q["@_answerKey"] || "";
+    if (q.answer && q.answer["@_key"]) {
+      answerKey = q.answer["@_key"];
+    }
+
+    // Force string conversion for all values
+    const forceString = (value: any): string => {
+      if (value === null || value === undefined) return "";
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number') return String(value);
+      if (typeof value === 'boolean') return String(value);
+      
+      // For objects, try to extract text content
+      if (typeof value === 'object') {
+        if (value['#text']) return String(value['#text']);
+        if (value.cdata) return String(value.cdata);
+        if (value.__cdata) return String(value.__cdata);
+        
+        // If it's a simple object with one text property, extract it
+        const keys = Object.keys(value);
+        if (keys.length === 1) {
+          const singleValue = value[keys[0]];
+          if (typeof singleValue === 'string') return singleValue;
+        }
+        
+        return String(value);
+      }
+      
+      return String(value);
+    };
+
     return {
       xmlId: q["@_id"] ?? "",
-      grade: parseInt(String(q.grade ?? "1")),
-      domain: q.domain ?? "",
-      standard: q.standard ?? "",
-      tier: parseInt(String(q.tier ?? "1")),
-      questionText: String(q.questionText ?? ""),
-      correctAnswer: String(q.correctAnswer ?? ""),
-      answerKey: String(q.answerKey ?? "A"),
-      choices: choicesArray.map((c: any) => String(c ?? "")),
-      explanation: String(q.explanation ?? ""),
-      theme: q.theme ?? "",
-      tokensUsed: parseInt(String(q.tokensUsed ?? "0")),
+      grade: parseInt(forceString(q["@_grade"] || q.grade)) || 1,
+      domain: forceString(q["@_domain"] || q.domain),
+      standard: forceString(q["@_standard"] || q.standard),
+      tier: parseInt(forceString(q["@_tier"] || q.tier)) || 1,
+      questionText: forceString(questionText),
+      correctAnswer: forceString(correctAnswer),
+      answerKey: forceString(answerKey) || "A",
+      choices: choicesArray.map((c: any) => forceString(c)),
+      explanation: forceString(q.explanation),
+      theme: forceString(q.theme),
+      tokensUsed: parseInt(forceString(q.tokensUsed)) || 0,
       status: q.status ?? "pending",
       validationStatus: "pending",
       validationErrors: [],
@@ -900,22 +942,34 @@ async function generateZipFromGroups(groups: Record<string, any[]>, baseFilename
 }
 
 function generateXmlFromQuestions(questions: any[]): string {
-  const questionsXml = questions.map(q => `
-  <question id="${q.xmlId}">
-    <grade>${q.grade}</grade>
-    <domain>${q.domain}</domain>
-    <standard>${q.standard}</standard>
-    <tier>${q.tier}</tier>
-    <questionText><![CDATA[${q.questionText}]]></questionText>
-    <correctAnswer><![CDATA[${q.correctAnswer}]]></correctAnswer>
-    <answerKey>${q.answerKey}</answerKey>
+  const questionsXml = questions.map(q => `  <question id="${q.xmlId}" grade="${q.grade}" domain="${q.domain}" standard="${q.standard}" tier="${q.tier}">
+    <stem>
+      ${q.questionText}
+    </stem>
     <choices>
-      ${Array.isArray(q.choices) ? q.choices.map((choice: string) => `<choice>${choice}</choice>`).join('\n      ') : `<choice>${q.choices}</choice>`}
+      ${Array.isArray(q.choices) ? q.choices.map((choice: string, index: number) => {
+        const id = String.fromCharCode(65 + index); // A, B, C, D
+        return `      <choice id="${id}">
+        ${choice}
+      </choice>`;
+      }).join('\n') : `      <choice id="A">
+        ${q.choices}
+      </choice>`}
     </choices>
-    <explanation><![CDATA[${q.explanation}]]></explanation>
-    <theme>${q.theme}</theme>
-    <tokensUsed>${q.tokensUsed}</tokensUsed>
-    <status>${q.status}</status>
+    <explanation>
+      ${q.explanation}
+    </explanation>
+    <metadata>
+      <created>
+        ${new Date().toString()}
+      </created>
+      <tokens_used>
+        ${q.tokensUsed}
+      </tokens_used>
+    </metadata>
+    <answer key="${q.answerKey}">
+      ${q.correctAnswer}
+    </answer>
   </question>`).join('\n');
 
   return `<?xml version="1.0" encoding="UTF-8"?>
