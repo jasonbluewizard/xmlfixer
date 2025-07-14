@@ -109,12 +109,18 @@ export default function Dashboard() {
         text: q.questionText
       }));
 
-      // Process in chunks of 10 to avoid payload size limits
-      const chunkSize = 10;
+      // Process in chunks of 5 to avoid payload size limits and improve reliability
+      const chunkSize = 5;
       let totalProcessed = 0;
+      const totalChunks = Math.ceil(questionsToShorten.length / chunkSize);
+      
+      console.log(`Starting batch shortening: ${questionsToShorten.length} questions in ${totalChunks} chunks`);
       
       for (let i = 0; i < questionsToShorten.length; i += chunkSize) {
         const chunk = questionsToShorten.slice(i, i + chunkSize);
+        const chunkNumber = Math.floor(i / chunkSize) + 1;
+        
+        console.log(`Processing chunk ${chunkNumber}/${totalChunks} (${chunk.length} questions)...`);
         
         try {
           const response = await fetch('/api/ai/shorten-batch', {
@@ -130,16 +136,17 @@ export default function Dashboard() {
           });
           
           if (!response.ok) {
-            console.error(`Failed to process chunk ${i / chunkSize + 1}`);
+            console.error(`Failed to process chunk ${chunkNumber}: ${response.status} ${response.statusText}`);
             continue;
           }
           
           const data = await response.json();
+          console.log(`Chunk ${chunkNumber} returned ${data.results.length} shortened questions`);
           
           // Apply the shortened texts by updating each question
           for (const result of data.results) {
             try {
-              await fetch(`/api/questions/${result.id}`, {
+              const updateResponse = await fetch(`/api/questions/${result.id}`, {
                 method: 'PUT',
                 headers: {
                   'Content-Type': 'application/json',
@@ -148,20 +155,26 @@ export default function Dashboard() {
                   questionText: result.shortenedText
                 }),
               });
-              totalProcessed++;
+              
+              if (updateResponse.ok) {
+                totalProcessed++;
+                console.log(`✓ Updated question ${result.id}: ${result.originalWordCount} → ${result.newWordCount} words`);
+              } else {
+                console.error(`✗ Failed to update question ${result.id}: ${updateResponse.status}`);
+              }
             } catch (error) {
-              console.error(`Failed to update question ${result.id}:`, error);
+              console.error(`✗ Failed to update question ${result.id}:`, error);
             }
           }
         } catch (error) {
-          console.error(`Error processing chunk ${i / chunkSize + 1}:`, error);
+          console.error(`Error processing chunk ${chunkNumber}:`, error);
         }
       }
       
-      console.log(`Successfully processed ${totalProcessed} out of ${questionsToShorten.length} questions`);
+      console.log(`✅ Batch shortening complete: ${totalProcessed} out of ${questionsToShorten.length} questions processed successfully`);
       
       // Refresh the questions list
-      window.location.reload();
+      setTimeout(() => window.location.reload(), 1000);
       
     } catch (error) {
       console.error('Error shortening questions:', error);
