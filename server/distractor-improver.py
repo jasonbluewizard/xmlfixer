@@ -224,7 +224,14 @@ def main():
     """Main function to process question data from stdin"""
     try:
         # Read input from stdin
-        input_data = sys.stdin.read()
+        input_data = sys.stdin.read().strip()
+        if not input_data:
+            raise ValueError("No input data received")
+        
+        # Debug logging
+        import sys
+        print(f"Received input: {input_data}", file=sys.stderr)
+        
         question_data = json.loads(input_data)
         
         # Create improver and process

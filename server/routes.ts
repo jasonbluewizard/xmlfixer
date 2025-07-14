@@ -637,13 +637,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const execFileAsync = promisify(execFile);
 
       try {
-        const result = await execFileAsync('python3', ['server/distractor-improver.py'], {
-          input: JSON.stringify(questionData),
-          timeout: 30000, // 30 second timeout
-          encoding: 'utf8'
+        console.log('Running distractor improver with data:', questionData);
+        
+        const { spawn } = await import("child_process");
+        const pythonProcess = spawn('python3', ['server/distractor-improver.py'], {
+          stdio: ['pipe', 'pipe', 'pipe']
         });
+        
+        let result = '';
+        let error = '';
+        
+        pythonProcess.stdout.on('data', (data) => {
+          result += data.toString();
+        });
+        
+        pythonProcess.stderr.on('data', (data) => {
+          error += data.toString();
+        });
+        
+        // Send input to Python script
+        pythonProcess.stdin.write(JSON.stringify(questionData));
+        pythonProcess.stdin.end();
+        
+        // Wait for process to complete with timeout
+        const processPromise = new Promise((resolve, reject) => {
+          pythonProcess.on('close', (code) => {
+            console.log(`Python process closed with code ${code}`);
+            console.log(`Python stdout: ${result}`);
+            console.log(`Python stderr: ${error}`);
+            
+            if (code === 0 && result.trim()) {
+              resolve(result.trim());
+            } else {
+              reject(new Error(`Python process exited with code ${code}. Stdout: ${result}, Stderr: ${error}`));
+            }
+          });
+          
+          pythonProcess.on('error', (err) => {
+            console.error('Python process error:', err);
+            reject(err);
+          });
+        });
+        
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => {
+            pythonProcess.kill('SIGTERM');
+            reject(new Error('Python script timeout'));
+          }, 5000); // 5 second timeout
+        });
+        
+        const output = await Promise.race([processPromise, timeoutPromise]) as string;
 
-        const improvement = JSON.parse(result.stdout);
+        const improvement = JSON.parse(output);
         
         if (improvement.success) {
           // Update the question with improved choices
