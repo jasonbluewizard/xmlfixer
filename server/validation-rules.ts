@@ -120,13 +120,14 @@ export class ValidationRuleEngine {
         totalScore -= errorPenalty + warningPenalty;
       } catch (error) {
         console.error(`Rule ${rule.id} failed:`, error);
+        const message = error instanceof Error ? error.message : String(error);
         results.push({
           isValid: false,
           errors: [{
             id: `${rule.id}_failure`,
             type: 'error',
             category: rule.category,
-            message: `Validation rule failed: ${error.message}`,
+            message: `Validation rule failed: ${message}`,
             severity: 'minor',
             automaticFix: false,
             validationMethod: 'regex',
@@ -192,13 +193,14 @@ export class ValidationRuleEngine {
         score: errors.length === 0 ? 100 : 50
       };
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       return {
         isValid: false,
         errors: [{
           id: 'sympy_validation_failed',
           type: 'error',
           category: 'mathematical_accuracy',
-          message: `SymPy validation failed: ${error.message}`,
+          message: `SymPy validation failed: ${message}`,
           severity: 'major',
           automaticFix: false,
           validationMethod: 'sympy',

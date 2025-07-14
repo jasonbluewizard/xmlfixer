@@ -81,7 +81,7 @@ export default function QuestionList({
           id: question.id,
           question: {
             validationStatus: status,
-            validationErrors: [...validationResult.errors, ...validationResult.warnings]
+            validationErrors: [...validationResult.errors, ...validationResult.warnings].map(e => e.message)
           }
         };
       });

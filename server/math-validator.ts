@@ -81,9 +81,10 @@ export class MathValidator {
       };
     } catch (error) {
       console.error('Mathematical validation failed:', error);
+      const message = error instanceof Error ? error.message : String(error);
       return {
         sympyValidated: false,
-        computationalErrors: [`Validation error: ${error.message}`],
+        computationalErrors: [`Validation error: ${message}`],
         arithmeticConsistency: false,
         answerExplanationMatch: false,
         gradeAppropriate: false
@@ -155,9 +156,10 @@ export class MathValidator {
       };
     } catch (error) {
       console.error('Math validation error:', error);
+      const message = error instanceof Error ? error.message : String(error);
       return {
         isValid: false,
-        errors: [`Math validation failed: ${error.message}`]
+        errors: [`Math validation failed: ${message}`]
       };
     }
 

@@ -93,7 +93,8 @@ export class AIQuestionVerifier {
       );
     } catch (error) {
       console.error('Error verifying question:', error);
-      throw new Error(`Failed to verify question: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to verify question: ${message}`);
     }
   }
 
@@ -104,7 +105,7 @@ export class AIQuestionVerifier {
     // 1. Run mathematical validation (SymPy-based)
     const mathValidation = await sympyValidationBreaker.callWithFallback(
       () => mathValidator.validateMathematically(question),
-      () => this.createFallbackMathValidation()
+      () => Promise.resolve(this.createFallbackMathValidation())
     );
 
     // 2. Run validation rules engine
@@ -163,7 +164,7 @@ export class AIQuestionVerifier {
       max_tokens: 2000
     });
 
-    return JSON.parse(response.choices[0].message.content);
+    return JSON.parse(response.choices[0].message.content || '{}');
   }
 
   /**
@@ -211,7 +212,8 @@ export class AIQuestionVerifier {
       };
     } catch (error) {
       console.error('Error verifying batch:', error);
-      throw new Error(`Failed to verify batch: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to verify batch: ${message}`);
     }
   }
 

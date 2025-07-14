@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import type { XmlFile } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
 import { 
   AlertTriangle, 
@@ -388,7 +389,7 @@ export default function DuplicateDetector({ onComplete }: DuplicateDetectorProps
               </p>
               <Button 
                 onClick={() => {
-                  const selectedFileData = xmlFiles.find(f => f.id === selectedFile);
+                  const selectedFileData = xmlFiles.find((f: XmlFile) => f.id === selectedFile);
                   if (selectedFileData) {
                     const cleanedFilename = selectedFileData.filename.replace(/\.xml$/, '_no_duplicates.xml');
                     window.open(`/api/xml/download/${cleanedFilename}`, '_blank');

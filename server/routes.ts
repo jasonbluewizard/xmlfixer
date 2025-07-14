@@ -1,14 +1,14 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema } from "@shared/schema";
+import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema, type Question } from "@shared/schema";
 import multer from "multer";
 import { z } from "zod";
 import { XMLParser } from "fast-xml-parser";
-import { writeFileSync, readFileSync } from "fs";
+import { writeFileSync, readFileSync, unlinkSync } from "fs";
 import path from "path";
 import { tmpdir } from "os";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { aiVerifier } from "./ai-verifier";
 import { mathValidator } from "./math-validator";
 import { validationEngine } from "./validation-rules";
@@ -145,9 +145,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Parsed ${parsedQuestions.length} questions from XML`);
 
-      // Clear existing questions to avoid accumulation
-      await storage.clearAllQuestions();
-      console.log("Cleared existing questions from storage");
 
       // Create XML file record  
       const xmlFile = await storage.createXmlFile({
@@ -386,18 +383,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create a temporary question object for validation
-      const tempQuestion = {
+      const tempQuestion: Question = {
         id: 0,
-        questionText: validationRequest.questionText,
-        correctAnswer: validationRequest.correctAnswer,
-        choices: validationRequest.choices || [],
-        explanation: validationRequest.explanation || '',
+        xmlId: '',
         grade: validationRequest.grade || 1,
         domain: validationRequest.domain || 'Number and Operations',
         standard: '',
+        tier: 1,
+        questionText: validationRequest.questionText,
+        correctAnswer: validationRequest.correctAnswer,
         answerKey: 'A',
+        choices: validationRequest.choices || [],
+        explanation: validationRequest.explanation || '',
         theme: '',
-        xmlId: ''
+        tokensUsed: 0,
+        status: 'pending',
+        validationStatus: 'pending',
+        validationErrors: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       const mathValidation = await mathValidator.validateMathematically(tempQuestion);
@@ -475,7 +479,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For large files, set a timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Processing timeout after 30 seconds')), 30000);
+        setTimeout(() => reject(new Error('Processing timeout after 120 seconds')), 120000);
       });
 
       // Parse XML and extract questions
@@ -483,16 +487,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ignoreAttributes: false,
         attributeNamePrefix: "@_",
         textNodeName: "#text",
-        parseNodeValue: true,
+        parseTagValue: true,
         parseAttributeValue: true,
         trimValues: true,
-        parseTrueNumberOnly: false,
         alwaysCreateTextNode: true,
         processEntities: true,
         htmlEntities: true,
         ignoreDeclaration: true,
         ignorePiTags: true,
-        parseTagValue: false,
         stopNodes: ["*.CDATA", "*.cdata"],
         cdataPropName: "cdata"
       });
@@ -569,7 +571,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Generate new XML with duplicates removed
       const uniqueQuestions = duplicateResult.keptQuestions;
-      const newXmlContent = generateXmlFromQuestions(uniqueQuestions.map(q => ({
+      const newXmlContent = generateXmlFromQuestions(uniqueQuestions.map((q: any) => ({
         xmlId: q.xmlId,
         grade: q.grade,
         domain: q.domain,
@@ -589,7 +591,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const newFilename = xmlFile.filename.replace(/\.xml$/, '_no_duplicates.xml');
       const newXmlFile = await storage.createXmlFile({
         filename: newFilename,
-        originalContent: newXmlContent
+        originalContent: newXmlContent,
+        questionCount: uniqueQuestions.length
       });
 
       res.json({
@@ -814,12 +817,11 @@ Respond with only the shortened text, no additional explanation.`;
 }
 
 function parseXmlQuestions(xmlContent: string): any[] {
-  const parser = new XMLParser({ 
+  const parser = new XMLParser({
     ignoreAttributes: false,
     parseAttributeValue: true,
     trimValues: true,
-    parseTrueNumberOnly: false,
-    parseNodeValue: true
+    parseTagValue: true
   });
   
   const parsed = parser.parse(xmlContent) as any;
@@ -869,21 +871,20 @@ async function generateZipFromGroups(groups: Record<string, any[]>, baseFilename
   }
   
   try {
-    // Use system zip command to create archive
+    // Use system zip command to create archive without using a shell
     const fileNames = filePaths.map(p => path.basename(p));
-    const zipCommand = `cd "${tempDir}" && zip "${zipPath}" ${fileNames.join(' ')}`;
-    execSync(zipCommand);
+    execFileSync("zip", ["-j", zipPath, ...fileNames], { cwd: tempDir });
     
     const zipBuffer = readFileSync(zipPath);
     
     // Clean up temporary files
     filePaths.forEach(p => {
-      try { 
-        execSync(`rm "${p}"`); 
+      try {
+        unlinkSync(p);
       } catch {}
     });
-    try { 
-      execSync(`rm "${zipPath}"`); 
+    try {
+      unlinkSync(zipPath);
     } catch {}
     
     return zipBuffer;
@@ -896,8 +897,8 @@ async function generateZipFromGroups(groups: Record<string, any[]>, baseFilename
       
       // Clean up temporary files
       filePaths.forEach(p => {
-        try { 
-          execSync(`rm "${p}"`); 
+        try {
+          unlinkSync(p);
         } catch {}
       });
       
