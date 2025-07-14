@@ -5,10 +5,10 @@ import { insertQuestionSchema, updateQuestionSchema, insertXmlFileSchema } from 
 import multer from "multer";
 import { z } from "zod";
 import { XMLParser } from "fast-xml-parser";
-import { writeFileSync, readFileSync } from "fs";
+import { writeFileSync, readFileSync, unlinkSync } from "fs";
 import path from "path";
 import { tmpdir } from "os";
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { aiVerifier } from "./ai-verifier";
 import { mathValidator } from "./math-validator";
 import { validationEngine } from "./validation-rules";
@@ -145,9 +145,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`Parsed ${parsedQuestions.length} questions from XML`);
 
-      // Clear existing questions to avoid accumulation
-      await storage.clearAllQuestions();
-      console.log("Cleared existing questions from storage");
 
       // Create XML file record  
       const xmlFile = await storage.createXmlFile({
@@ -475,7 +472,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // For large files, set a timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Processing timeout after 30 seconds')), 30000);
+        setTimeout(() => reject(new Error('Processing timeout after 120 seconds')), 120000);
       });
 
       // Parse XML and extract questions
@@ -869,21 +866,20 @@ async function generateZipFromGroups(groups: Record<string, any[]>, baseFilename
   }
   
   try {
-    // Use system zip command to create archive
+    // Use system zip command to create archive without using a shell
     const fileNames = filePaths.map(p => path.basename(p));
-    const zipCommand = `cd "${tempDir}" && zip "${zipPath}" ${fileNames.join(' ')}`;
-    execSync(zipCommand);
+    execFileSync("zip", ["-j", zipPath, ...fileNames], { cwd: tempDir });
     
     const zipBuffer = readFileSync(zipPath);
     
     // Clean up temporary files
     filePaths.forEach(p => {
-      try { 
-        execSync(`rm "${p}"`); 
+      try {
+        unlinkSync(p);
       } catch {}
     });
-    try { 
-      execSync(`rm "${zipPath}"`); 
+    try {
+      unlinkSync(zipPath);
     } catch {}
     
     return zipBuffer;
@@ -896,8 +892,8 @@ async function generateZipFromGroups(groups: Record<string, any[]>, baseFilename
       
       // Clean up temporary files
       filePaths.forEach(p => {
-        try { 
-          execSync(`rm "${p}"`); 
+        try {
+          unlinkSync(p);
         } catch {}
       });
       
